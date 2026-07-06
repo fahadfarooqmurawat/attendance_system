@@ -1,0 +1,11 @@
+{
+  email admin@example.com
+}
+
+attendance.example.com {
+  reverse_proxy dashboard:3000
+}
+
+devices.attendance.example.com {
+  reverse_proxy device-gateway:4001
+}

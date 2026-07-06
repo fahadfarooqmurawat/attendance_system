@@ -1,0 +1,13 @@
+{
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "eslint.workingDirectories": [
+    { "directory": "apps/dashboard", "changeProcessCWD": true },
+    { "directory": "apps/device-gateway", "changeProcessCWD": true },
+    { "directory": "apps/worker", "changeProcessCWD": true },
+    { "directory": "packages/attendance-core", "changeProcessCWD": true },
+    { "directory": "packages/db", "changeProcessCWD": true },
+    { "directory": "packages/shared", "changeProcessCWD": true }
+  ],
+  "typescript.tsdk": "node_modules/typescript/lib"
+}

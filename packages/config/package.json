@@ -1,0 +1,14 @@
+{
+  "name": "@attendance/config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./eslint/base": "./eslint/base.mjs",
+    "./prettier": "./prettier/prettier.config.mjs",
+    "./tsconfig/base": "./tsconfig/base.json"
+  },
+  "scripts": {
+    "lint": "eslint ."
+  }
+}

@@ -1,0 +1,13 @@
+.git
+.github
+.turbo
+node_modules
+coverage
+dist
+build
+apps/dashboard/.next
+apps/firmware/.pio
+.env
+.env.*
+!.env.example
+*.log

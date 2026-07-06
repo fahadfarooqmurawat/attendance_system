@@ -1,0 +1,22 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/apps/dashboard"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/apps/device-gateway"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker"
+    directory: "/apps/worker"
+    schedule:
+      interval: "weekly"
