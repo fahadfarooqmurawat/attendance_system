@@ -3,11 +3,11 @@ services:
     image: postgres:17-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: attendance
-      POSTGRES_PASSWORD: attendance
-      POSTGRES_DB: attendance
+      POSTGRES_USER: ${POSTGRES_USER:-attendance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-attendance_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-attendance}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_BIND:-127.0.0.1:5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -22,14 +22,24 @@ services:
       dockerfile: apps/device-gateway/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance@postgres:5432/attendance?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance_dev_password@postgres:5432/attendance?schema=public}
+      DEVICE_SIGNATURE_MAX_AGE_SECONDS: ${DEVICE_SIGNATURE_MAX_AGE_SECONDS:-300}
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 4001
     ports:
-      - "4001:4001"
+      - "${DEVICE_GATEWAY_BIND:-127.0.0.1:4001}:4001"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:4001/healthz'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   dashboard:
     build:
@@ -37,15 +47,25 @@ services:
       dockerfile: apps/dashboard/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance@postgres:5432/attendance?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance_dev_password@postgres:5432/attendance?schema=public}
       NODE_ENV: ${NODE_ENV:-development}
+      PASSWORD_PEPPER: ${PASSWORD_PEPPER:-dev-only-password-pepper-change-for-shared-envs}
       PORT: 3000
-      SESSION_SECRET: ${SESSION_SECRET:-change-me-in-production}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-session-secret-change-for-shared-envs}
     ports:
-      - "3000:3000"
+      - "${DASHBOARD_BIND:-127.0.0.1:3000}:3000"
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          'node -e "fetch(''http://127.0.0.1:3000/healthz'').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"'
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   worker:
     build:
@@ -53,7 +73,7 @@ services:
       dockerfile: apps/worker/Dockerfile
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance@postgres:5432/attendance?schema=public}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://attendance:attendance_dev_password@postgres:5432/attendance?schema=public}
       NODE_ENV: ${NODE_ENV:-development}
       WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-60}
     depends_on:

@@ -20,6 +20,7 @@ pnpm install
 cp .env.example .env
 pnpm docker:up
 pnpm db:migrate
+pnpm db:seed
 pnpm dev
 ```
 
@@ -32,7 +33,19 @@ pnpm test
 pnpm build
 pnpm format
 pnpm db:studio
+pnpm docker:prod:config
 ```
+
+## Deployment
+
+The production target is Docker Compose on an Ubuntu VPS behind nginx.
+
+- Use `.env.production.example` as the template for `.env.production`.
+- Validate production Compose with `pnpm docker:prod:config`.
+- Apply database migrations with `pnpm db:migrate:deploy`.
+- Use `infra/nginx/attendance.conf` as the nginx starting point.
+
+See `docs/deployment/vps-nginx.md` for the full runbook.
 
 ## Service Boundaries
 

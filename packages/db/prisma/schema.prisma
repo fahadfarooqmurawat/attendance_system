@@ -138,6 +138,8 @@ model Device {
   enrollmentSessions     EnrollmentSession[]
   fingerprintEnrollments FingerprintEnrollment[]
   scanEvents             ScanEvent[]
+
+  @@index([status, lastSeenAt])
 }
 
 model FingerprintEnrollment {
@@ -172,6 +174,9 @@ model EnrollmentSession {
   device                Device                  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   employee              Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   requestedBy           Employee                @relation("EnrollmentRequestedBy", fields: [requestedByEmployeeId], references: [id])
+
+  @@index([deviceId, status, expiresAt])
+  @@index([employeeId, status])
 }
 
 model DeviceCommand {

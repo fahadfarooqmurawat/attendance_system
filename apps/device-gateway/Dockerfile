@@ -13,6 +13,10 @@ RUN pnpm install --frozen-lockfile
 
 COPY . .
 RUN pnpm --filter @attendance/db generate
+RUN pnpm --filter @attendance/device-gateway build
+RUN chown -R node:node /app
 
+ENV NODE_ENV=production
+USER node
 EXPOSE 4001
 CMD ["pnpm", "--filter", "@attendance/device-gateway", "start"]

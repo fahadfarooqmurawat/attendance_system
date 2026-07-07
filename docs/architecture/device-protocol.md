@@ -4,8 +4,23 @@
 
 ```text
 x-device-id: device id issued by the dashboard
-x-device-signature: HMAC signature placeholder
+x-device-timestamp: unix seconds, unix milliseconds, or ISO timestamp
+x-device-signature: HMAC-SHA256 signature as hex or sha256=<hex>
 ```
+
+The signature is calculated over the raw request body, not a re-serialized JSON object.
+Devices sign this canonical string:
+
+```text
+<x-device-timestamp>
+<HTTP method>
+<path and query string>
+<raw request body>
+```
+
+The HMAC key is the SHA-256 hex digest of the device secret. In development, the seeded
+device id is `esp32-dev-001` and the default device secret is `dev-device-secret`.
+Production devices must be provisioned with unique random secrets.
 
 ## Endpoints
 

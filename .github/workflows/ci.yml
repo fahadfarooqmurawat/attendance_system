@@ -43,3 +43,6 @@ jobs:
 
       - name: Docker Compose config
         run: docker compose config
+
+      - name: Production Docker Compose config
+        run: docker compose --env-file .env.production.example -f docker-compose.yml -f docker-compose.prod.yml config

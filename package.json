@@ -20,6 +20,7 @@
     "dev:device-gateway": "pnpm --filter @attendance/device-gateway dev",
     "dev:worker": "pnpm --filter @attendance/worker dev",
     "docker:down": "docker compose down",
+    "docker:prod:config": "docker compose --env-file .env.production -f docker-compose.yml -f docker-compose.prod.yml config",
     "docker:up": "docker compose up --build",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

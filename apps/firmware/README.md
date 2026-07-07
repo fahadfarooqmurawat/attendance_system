@@ -12,3 +12,6 @@ pio device monitor
 
 The fingerprint templates remain inside the scanner. The firmware only sends matched
 template IDs to `device-gateway`.
+
+Device requests must be signed with the HMAC protocol documented in
+`../../docs/architecture/device-protocol.md`.

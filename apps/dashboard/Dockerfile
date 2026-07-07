@@ -15,6 +15,9 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter @attendance/db generate
 RUN pnpm --filter @attendance/dashboard build
+RUN chown -R node:node /app
 
+ENV NODE_ENV=production
+USER node
 EXPOSE 3000
 CMD ["pnpm", "--filter", "@attendance/dashboard", "start"]
