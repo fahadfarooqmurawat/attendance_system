@@ -1,7 +1,7 @@
 FROM node:26-alpine
 
 WORKDIR /app
-RUN corepack enable
+RUN npm install -g corepack@latest && corepack enable
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json tsconfig.base.json ./
 COPY apps/dashboard/package.json apps/dashboard/package.json
