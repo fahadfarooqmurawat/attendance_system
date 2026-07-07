@@ -18,7 +18,7 @@
     "@attendance/shared": "workspace:*",
     "node-cron": "^4.2.1",
     "nodemailer": "^6.10.1",
-    "pino": "^9.7.0",
+    "pino": "^10.3.1",
     "tsx": "^4.20.3",
     "zod": "^4.1.0"
   },
