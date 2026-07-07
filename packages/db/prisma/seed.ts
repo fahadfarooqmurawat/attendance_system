@@ -1,11 +1,24 @@
 import { createHash } from "node:crypto";
+import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
 
-const prisma = new PrismaClient();
+const prisma = new PrismaClient({
+  adapter: new PrismaPg({ connectionString: getDatabaseUrl() })
+});
 const devDeviceId = "esp32-dev-001";
 
 function hashDeviceSecret(secret: string) {
   return createHash("sha256").update(secret, "utf8").digest("hex");
+}
+
+function getDatabaseUrl() {
+  const databaseUrl = process.env.DATABASE_URL;
+
+  if (!databaseUrl) {
+    throw new Error("DATABASE_URL is required to seed the database.");
+  }
+
+  return databaseUrl;
 }
 
 async function main() {

@@ -13,16 +13,30 @@ Monorepo scaffold for an ESP32 fingerprint attendance system.
 - `packages/attendance-core`: attendance derivation rules.
 - `packages/config`: shared configuration placeholders.
 
-## First Run
+## First Run For Local Development
 
 ```bash
 pnpm install
 cp .env.example .env
-pnpm docker:up
+pnpm docker:db:up
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
+
+This starts only PostgreSQL in Docker and runs the TypeScript apps locally with watch mode.
+
+## Run The Whole Stack In Docker
+
+```bash
+pnpm docker:up
+pnpm db:migrate
+pnpm db:seed
+```
+
+When using `pnpm docker:up`, do not also run `pnpm dev` unless you stop the app containers
+or change ports. The Docker stack already starts `dashboard`, `device-gateway`, and
+`worker`.
 
 ## Useful Commands
 
@@ -33,8 +47,13 @@ pnpm test
 pnpm build
 pnpm format
 pnpm db:studio
+pnpm docker:db:up
+pnpm docker:logs
 pnpm docker:prod:config
 ```
+
+`pnpm docker:up` starts all Docker services in detached mode. Use `pnpm docker:logs` to
+watch container output, and `pnpm docker:down` to stop the local stack.
 
 ## Deployment
 
