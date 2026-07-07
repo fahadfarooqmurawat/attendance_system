@@ -15,6 +15,8 @@ Monorepo scaffold for an ESP32 fingerprint attendance system.
 
 ## First Run For Local Development
 
+See `docs/development/getting-started.md` for the full development guide.
+
 ```bash
 pnpm install
 cp .env.example .env
@@ -39,6 +41,8 @@ or change ports. The Docker stack already starts `dashboard`, `device-gateway`, 
 `worker`.
 
 ## Useful Commands
+
+The full command reference is in `docs/development/getting-started.md`.
 
 ```bash
 pnpm lint
@@ -65,6 +69,13 @@ The production target is Docker Compose on an Ubuntu VPS behind nginx.
 - Use `infra/nginx/attendance.conf` as the nginx starting point.
 
 See `docs/deployment/vps-nginx.md` for the full runbook.
+
+## Development Docs
+
+- `docs/development/getting-started.md`: local setup, workflows, Prisma, firmware, and troubleshooting.
+- `docs/development/onboarding-checklist.md`: checklist for new engineers.
+- `CONTRIBUTING.md`: pull request and contribution expectations.
+- `SECURITY.md`: secrets, device request security, and production safety rules.
 
 ## Service Boundaries
 

@@ -2,7 +2,11 @@
 #include <HTTPClient.h>
 #include <WiFi.h>
 
-#include "config.h"
+// #if __has_include("config.h")
+// #include "config.h"
+// #else
+#include "config.example.h"
+// #endif
 
 void connectToWifi() {
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);

@@ -3,6 +3,7 @@
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "ms-azuretools.vscode-docker",
+    "ms-vscode.cpptools",
     "platformio.platformio-ide",
     "prisma.prisma"
   ]

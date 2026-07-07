@@ -2,14 +2,21 @@
 
 ## Local Setup
 
+Read `docs/development/getting-started.md` before starting. The recommended daily workflow
+is PostgreSQL in Docker with the apps running locally:
+
 ```bash
 pnpm install
 cp .env.example .env
-pnpm docker:up
+pnpm docker:db:up
 pnpm db:migrate
 pnpm db:seed
 pnpm dev
 ```
+
+Use `pnpm docker:up` only when you intentionally want the whole stack running in Docker.
+Do not run `pnpm dev` at the same time as the full Docker stack unless you have changed
+ports or stopped the app containers.
 
 ## Before Opening A Pull Request
 
@@ -31,6 +38,7 @@ pio run -d apps/firmware
 ## Database Changes
 
 - Change `packages/db/prisma/schema.prisma`.
+- Keep datasource URLs in `packages/db/prisma.config.ts`, not in `schema.prisma`.
 - Create and commit a migration under `packages/db/prisma/migrations`.
 - Use `pnpm db:migrate` locally.
 - Use `pnpm db:migrate:deploy` on production.
