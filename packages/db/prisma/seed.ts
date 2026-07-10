@@ -1,6 +1,18 @@
 import { createHash } from "node:crypto";
+import { existsSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { loadEnvFile } from "node:process";
+import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+
+const seedDir = dirname(fileURLToPath(import.meta.url));
+
+for (const envPath of [resolve(seedDir, "../../../.env"), resolve(seedDir, "../.env")]) {
+  if (existsSync(envPath)) {
+    loadEnvFile(envPath);
+  }
+}
 
 const prisma = new PrismaClient({
   adapter: new PrismaPg({ connectionString: getDatabaseUrl() })
@@ -15,7 +27,9 @@ function getDatabaseUrl() {
   const databaseUrl = process.env.DATABASE_URL;
 
   if (!databaseUrl) {
-    throw new Error("DATABASE_URL is required to seed the database.");
+    throw new Error(
+      "DATABASE_URL is required to seed the database. Create .env from .env.example or set DATABASE_URL."
+    );
   }
 
   return databaseUrl;
