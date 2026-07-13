@@ -15,6 +15,7 @@ apps/dashboard/.next/
 apps/dashboard/out/
 
 apps/firmware/.pio/
+apps/firmware/compile_commands.json
 apps/firmware/include/config.h
 
 packages/db/prisma/dev.db
