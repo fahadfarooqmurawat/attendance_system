@@ -8,32 +8,43 @@
 #include "config.example.h"
 // #endif
 
-void connectToWifi() {
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-  Serial.print("Connecting to WiFi");
+#define LED_PIN 2
 
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
+// void connectToWifi() {
+//   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+//   Serial.print("Connecting to WiFi");
 
-  Serial.println();
-  Serial.print("Connected as ");
-  Serial.println(WiFi.localIP());
-}
+//   while (WiFi.status() != WL_CONNECTED) {
+//     delay(500);
+//     Serial.print(".");
+//   }
+
+//   Serial.println();
+//   Serial.print("Connected as ");
+//   Serial.println(WiFi.localIP());
+// }
 
 void setup() {
   Serial.begin(115200);
   delay(1000);
+  pinMode(LED_PIN, OUTPUT);
+  Serial.println("Setup started");
 
   Serial.println("attendance firmware scaffold");
   Serial.print("device id: ");
   Serial.println(DEVICE_ID);
 
-  connectToWifi();
+  //connectToWifi();
 }
 
 void loop() {
   // Placeholder: read scanner mode, match fingerprints, and post scan events.
-  delay(1000);
+  Serial.println("LED ON");
+  digitalWrite(LED_PIN, HIGH);
+  delay(500);
+
+  Serial.println("LED OFF");
+  digitalWrite(LED_PIN, LOW);
+  delay(500);
+  //delay(1000);
 }
