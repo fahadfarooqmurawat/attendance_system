@@ -54,6 +54,11 @@ pnpm db:studio
 pnpm docker:db:up
 pnpm docker:logs
 pnpm docker:prod:config
+pnpm firmware:build
+pnpm firmware:test
+pnpm firmware:upload
+pnpm firmware:monitor
+pnpm firmware:clean
 ```
 
 `pnpm docker:up` starts all Docker services in detached mode. Use `pnpm docker:logs` to

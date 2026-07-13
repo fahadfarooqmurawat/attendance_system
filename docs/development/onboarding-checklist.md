@@ -31,7 +31,7 @@ Use this checklist when a new engineer joins the project.
 - [ ] Run `pnpm typecheck`.
 - [ ] Run `pnpm test`.
 - [ ] Run `pnpm build`.
-- [ ] Run `pio run -d apps/firmware` if working on firmware.
+- [ ] Run `pnpm firmware:build` if working on firmware.
 
 ## Project Context
 

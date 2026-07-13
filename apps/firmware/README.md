@@ -4,20 +4,30 @@ ESP32 firmware scaffold for the fingerprint attendance device.
 
 ## Local Setup
 
+Copy config
+
 ```bash
 cp include/config.example.h include/config.h
+```
+
+Build, Upload and Monitor locally
+
+```bash
 pio run
+pio run -t upload
 pio device monitor
 ```
 
-When running from the root directory
+Build, Upload and Monitor from root directory
 
 ```bash
-pio run -d apps/firmware
+pnpm firmware:build
+pnpm firmware:upload
+pnpm firmware:monitor
 ```
 
 In VS Code, install the recommended PlatformIO and C/C++ extensions. If `Arduino.h` shows
-as missing, run `pio run -d apps/firmware` once or use `PlatformIO: Rebuild IntelliSense
+as missing, run `pnpm firmware:build` from the repo root once or use `PlatformIO: Rebuild IntelliSense
 Index` from the command palette. The ESP32 Arduino headers are downloaded by PlatformIO,
 not committed to this repo.
 

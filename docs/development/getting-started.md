@@ -111,6 +111,11 @@ pnpm docker:down
 | `pnpm test`               | Run Vitest through Turbo.                                     |
 | `pnpm build`              | Build all packages/apps.                                      |
 | `pnpm format`             | Format the repo with Prettier.                                |
+| `pnpm firmware:build`     | Build the ESP32 firmware.                                     |
+| `pnpm firmware:test`      | Run firmware tests on a connected ESP32.                      |
+| `pnpm firmware:upload`    | Build and upload firmware to a connected ESP32.               |
+| `pnpm firmware:monitor`   | Monitor serial output from a connected ESP32.                 |
+| `pnpm firmware:clean`     | Remove PlatformIO firmware build artifacts.                   |
 
 Before opening a pull request, run:
 
@@ -124,7 +129,7 @@ pnpm build
 For firmware changes, also run:
 
 ```bash
-pio run -d apps/firmware
+pnpm firmware:build
 ```
 
 ## Environment Files
@@ -285,13 +290,31 @@ cp apps/firmware/include/config.example.h apps/firmware/include/config.h
 Build firmware:
 
 ```bash
-pio run -d apps/firmware
+pnpm firmware:build
+```
+
+Run firmware tests on a connected ESP32:
+
+```bash
+pnpm firmware:test
+```
+
+Upload firmware to a connected ESP32:
+
+```bash
+pnpm firmware:upload
 ```
 
 Monitor a connected device:
 
 ```bash
-pio device monitor -d apps/firmware
+pnpm firmware:monitor
+```
+
+Remove PlatformIO build artifacts:
+
+```bash
+pnpm firmware:clean
 ```
 
 If VS Code shows `cannot open source file "Arduino.h"`:
@@ -300,7 +323,7 @@ If VS Code shows `cannot open source file "Arduino.h"`:
 2. Run:
 
    ```bash
-   pio run -d apps/firmware
+   pnpm firmware:build
    ```
 
 3. In VS Code, run `PlatformIO: Rebuild IntelliSense Index`.
@@ -370,7 +393,7 @@ secret must all match.
 Run the firmware build once so PlatformIO downloads the ESP32 framework:
 
 ```bash
-pio run -d apps/firmware
+pnpm firmware:build
 ```
 
 Then rebuild the PlatformIO IntelliSense index in VS Code.
