@@ -114,7 +114,7 @@ void sendHeartbeat(
     serializeJson(doc, requestBody);
 
     // Build signature headers using the device secret and current timestamp
-    String timestamp;
+    String timestamp = "1784036743374";
     String signature = createDeviceSignature("POST", "/device/heartbeat", requestBody, DEVICE_SECRET, timestamp);
 
     http.addHeader("x-device-id", deviceId);

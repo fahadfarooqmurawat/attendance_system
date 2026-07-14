@@ -12,9 +12,15 @@ export type AuthenticatedDevice = Pick<
 >;
 
 export async function requireDeviceAuth(req: Request, res: Response, next: NextFunction) {
+  console.log("i am here");
+
   const deviceId = req.header("x-device-id");
   const timestamp = req.header("x-device-timestamp");
   const signature = req.header("x-device-signature");
+
+  console.log(deviceId);
+  console.log(timestamp);
+  console.log(signature);
 
   if (!deviceId || !timestamp || !signature) {
     res.status(401).json({ error: "missing_device_credentials" });
@@ -35,6 +41,8 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
         id: deviceId
       }
     });
+
+    console.log(device);
 
     if (!device) {
       res.status(401).json({ error: "invalid_device_credentials" });
@@ -62,6 +70,8 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
       },
       { maxAgeSeconds: env.DEVICE_SIGNATURE_MAX_AGE_SECONDS }
     );
+
+    console.log(verification);
 
     if (!verification.ok) {
       res.status(401).json({ error: verification.reason });

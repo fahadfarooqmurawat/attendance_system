@@ -1,19 +1,12 @@
 #include "device_signature.h"
 #include <time.h>
+#include <cstring>
+#include <cstdio>
 #include <mbedtls/sha256.h>
 #include <mbedtls/md.h>
 
 String createDeviceSignature(const char *method, const char *path, const String &body, const char *deviceSecret, String &outTimestamp)
 {
-    // Use epoch seconds as timestamp (server accepts seconds or ms)
-    time_t now = time(nullptr);
-    if (now <= 0)
-    {
-        now = 0;
-    }
-
-    outTimestamp = String((unsigned long)now);
-
     // Compute sha256(secret) -> 32 bytes key
     unsigned char secretHash[32];
     mbedtls_sha256_context sha_ctx;
@@ -24,7 +17,9 @@ String createDeviceSignature(const char *method, const char *path, const String 
     mbedtls_sha256_free(&sha_ctx);
 
     // Build message: timestamp + '\n' + METHOD + '\n' + PATH + '\n' + body
-    String message = outTimestamp + "\n" + String(method).toUpperCase() + "\n" + String(path) + "\n" + body;
+    String methodStr = String(method);
+    methodStr.toUpperCase();
+    String message = outTimestamp + "\n" + methodStr + "\n" + String(path) + "\n" + body;
 
     // Compute HMAC-SHA256 with key = secretHash
     const mbedtls_md_info_t *md_info = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
