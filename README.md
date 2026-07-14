@@ -88,8 +88,8 @@ See `docs/deployment/vps-nginx.md` for the full runbook.
 
 ## Service Boundaries
 
-`device-gateway` is hardware-facing. It accepts heartbeats, scan events, command polling,
-command acknowledgements, and enrollment results.
+`device-gateway` is hardware-facing. It accepts heartbeats, scan events, and enrollment
+results. Heartbeat responses carry the desired device mode and enrollment work.
 
 `dashboard` is human-facing. It owns employee management, attendance views, manual
 attendance requests, approvals, notification inboxes, and reports.

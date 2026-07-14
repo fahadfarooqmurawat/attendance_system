@@ -8,7 +8,7 @@ import { verifyDeviceSignature } from "./device-signature.js";
 
 export type AuthenticatedDevice = Pick<
   Device,
-  "apiKeyHash" | "firmwareVersion" | "id" | "lastSeenAt" | "name" | "status"
+  "apiKeyHash" | "firmwareVersion" | "id" | "lastSeenAt" | "name" | "reportedMode" | "status"
 >;
 
 export async function requireDeviceAuth(req: Request, res: Response, next: NextFunction) {
@@ -29,6 +29,7 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
         id: true,
         lastSeenAt: true,
         name: true,
+        reportedMode: true,
         status: true
       },
       where: {
