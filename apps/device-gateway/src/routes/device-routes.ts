@@ -1,5 +1,5 @@
 import { Router, type Response } from "express";
-import { Prisma, prisma } from "@attendance/db";
+import { Prisma } from "@attendance/db";
 import {
   deviceCommandAckSchema,
   deviceEnrollmentResultSchema,
@@ -7,6 +7,7 @@ import {
   deviceScanSchema
 } from "@attendance/shared";
 
+import { prisma } from "../db.js";
 import { type AuthenticatedDevice, requireDeviceAuth } from "../lib/device-auth.js";
 
 export const deviceRouter = Router();

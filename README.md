@@ -20,6 +20,8 @@ See `docs/development/getting-started.md` for the full development guide.
 ```bash
 pnpm install
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/device-gateway/.env.example apps/device-gateway/.env
 pnpm docker:db:up
 pnpm db:migrate
 pnpm db:seed
@@ -27,6 +29,8 @@ pnpm dev
 ```
 
 This starts only PostgreSQL in Docker and runs the TypeScript apps locally with watch mode.
+The root `.env` contains shared infrastructure and tooling values. Each app-level `.env`
+contains only settings owned by that app, such as its port.
 
 ## Run The Whole Stack In Docker
 

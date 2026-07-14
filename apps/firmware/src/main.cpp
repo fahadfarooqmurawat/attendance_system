@@ -1,10 +1,14 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
-
 #include "wifi_manager.h"
 #include "server_module.h"
+
+#if __has_include("config.h")
 #include "config.h"
+#else
+#include "config.example.h"
+#endif
 
 void setup()
 {

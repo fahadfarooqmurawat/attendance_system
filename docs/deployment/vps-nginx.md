@@ -32,8 +32,9 @@ Use long random values for:
 
 - `POSTGRES_PASSWORD`
 - `SESSION_SECRET`
-- `PASSWORD_PEPPER`
-- SMTP credentials
+
+Compose derives each container's `DATABASE_URL` from `POSTGRES_USER`,
+`POSTGRES_PASSWORD`, and `POSTGRES_DB`, so it is not duplicated in the production env file.
 
 Keep these binds unless you intentionally move nginx into Docker:
 
