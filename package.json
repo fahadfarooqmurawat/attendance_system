@@ -42,7 +42,7 @@
     "@types/node": "^24.0.10",
     "eslint": "^9.30.1",
     "prettier": "^3.6.2",
-    "turbo": "^2.5.4",
+    "turbo": "^2.10.5",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.36.0"
   }
