@@ -3,6 +3,7 @@
 #include <WiFi.h>
 #include "wifi_manager.h"
 #include "server_module.h"
+#include "scanner_module.h"
 
 #if __has_include("config.h")
 #include "config.h"
@@ -25,12 +26,21 @@ void setup()
 
         // Handle startup failure here.
     }
+
+    pingServer(GATEWAY_BASE_URL);
 }
 
 void loop()
 {
     maintainConnection();
-    pingServer(GATEWAY_BASE_URL);
 
-    delay(100);
+    ScannerMode mode = getMode();
+
+    sendHeartbeat(
+        GATEWAY_BASE_URL,
+        DEVICE_ID,
+        FIRMWARE_VERSION,
+        mode);
+
+    delay(10000);
 }

@@ -1,8 +1,18 @@
 #include "server_module.h"
 
 #include <HTTPClient.h>
+#include <ArduinoJson.h>
 
 #include "wifi_manager.h"
+#include "scanner_module.h"
+#include "device_signature.h"
+#if __has_include("config.h")
+#include "config.h"
+#else
+#include "config.example.h"
+#endif
+// ArduinoJson for JSON serialization
+
 
 namespace
 {
@@ -69,6 +79,58 @@ void pingServer(const char* url)
     {
         serverConnected = false;
         Serial.println("Could not reach server.");
+    }
+
+    http.end();
+}
+
+void sendHeartbeat(
+    const char* url,
+    const char* deviceId,
+    const char* firmwareVersion,
+    ScannerMode mode)
+{
+    if (!isConnected())
+    {
+        return;
+    }
+
+    HTTPClient http;
+
+    String endpoint = String(url) + "/device/heartbeat";
+
+    http.begin(endpoint);
+
+    http.addHeader("Content-Type", "application/json");
+
+    // Use a dynamic JSON document with a small capacity
+    DynamicJsonDocument doc(256);
+
+    doc["deviceId"] = deviceId;
+    doc["firmwareVersion"] = firmwareVersion;
+    doc["mode"] = (mode == ScannerMode::SCAN) ? "SCAN" : "ENROLL";
+
+    String requestBody;
+    serializeJson(doc, requestBody);
+
+    // Build signature headers using the device secret and current timestamp
+    String timestamp;
+    String signature = createDeviceSignature("POST", "/device/heartbeat", requestBody, DEVICE_SECRET, timestamp);
+
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-device-timestamp", timestamp);
+    http.addHeader("x-device-signature", signature);
+
+    int statusCode = http.POST(requestBody);
+
+    if (statusCode == 202)
+    {
+        Serial.println("Heartbeat sent.");
+    }
+    else
+    {
+        Serial.print("Heartbeat failed. Status: ");
+        Serial.println(statusCode);
     }
 
     http.end();
