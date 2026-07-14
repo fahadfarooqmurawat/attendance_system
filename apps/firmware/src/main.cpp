@@ -1,6 +1,8 @@
 #include <Arduino.h>
 #include <HTTPClient.h>
 #include <WiFi.h>
+#include "wifi_manager.h"
+#include "server_module.h"
 
 #if __has_include("config.h")
 #include "config.h"
@@ -8,43 +10,27 @@
 #include "config.example.h"
 #endif
 
-#define LED_PIN 2
+void setup()
+{
+    Serial.begin(115200);
+    delay(1000);
 
-// void connectToWifi() {
-//   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-//   Serial.print("Connecting to WiFi");
+    Serial.println("Attendance firmware scaffold");
+    Serial.print("Device ID: ");
+    Serial.println(DEVICE_ID);
 
-//   while (WiFi.status() != WL_CONNECTED) {
-//     delay(500);
-//     Serial.print(".");
-//   }
+    if (connectWifi(WIFI_SSID, WIFI_PASSWORD) == WifiStatus::FAILED)
+    {
+        Serial.println("Main: Could not connect to WiFi.");
 
-//   Serial.println();
-//   Serial.print("Connected as ");
-//   Serial.println(WiFi.localIP());
-// }
-
-void setup() {
-  Serial.begin(115200);
-  delay(1000);
-  pinMode(LED_PIN, OUTPUT);
-  Serial.println("Setup started");
-
-  Serial.println("attendance firmware scaffold");
-  Serial.print("device id: ");
-  Serial.println(DEVICE_ID);
-
-  //connectToWifi();
+        // Handle startup failure here.
+    }
 }
 
-void loop() {
-  // Placeholder: read scanner mode, match fingerprints, and post scan events.
-  Serial.println("LED ON");
-  digitalWrite(LED_PIN, HIGH);
-  delay(500);
+void loop()
+{
+    maintainConnection();
+    pingServer(GATEWAY_BASE_URL);
 
-  Serial.println("LED OFF");
-  digitalWrite(LED_PIN, LOW);
-  delay(500);
-  //delay(1000);
+    delay(100);
 }
