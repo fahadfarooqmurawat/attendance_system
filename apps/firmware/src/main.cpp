@@ -30,7 +30,7 @@ void setup()
 void loop()
 {
     maintainConnection();
-    pingServer(SERVER_URL);
+    pingServer(GATEWAY_BASE_URL);
 
     delay(100);
 }
