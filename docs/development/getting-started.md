@@ -36,6 +36,8 @@ From the repo root:
 ```bash
 pnpm install
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/device-gateway/.env.example apps/device-gateway/.env
 pnpm docker:db:up
 pnpm db:migrate
 pnpm db:seed
@@ -138,22 +140,31 @@ Use `.env.example` for local development:
 
 ```bash
 cp .env.example .env
+cp apps/dashboard/.env.example apps/dashboard/.env
+cp apps/device-gateway/.env.example apps/device-gateway/.env
 ```
 
 Rules:
 
-- Commit only example env files.
+- The root `.env` contains shared infrastructure and tooling values.
+- App `.env` files contain only app-owned values such as ports and service-specific secrets.
+- Do not duplicate shared values such as `DATABASE_URL` in app env files.
+- Do not create package-level `.env` files.
+- Runtime packages receive configuration from their importing app. Prisma CLI configuration
+  and the seed script may load the root `.env` because they are executable tooling.
 - Never commit `.env`, `.env.production`, firmware `config.h`, database dumps, or real keys.
 - `.env.production.example` is only a template for VPS deployment.
 - The bundled seed is development-only and must not be run in production.
 
-Important local env values:
+Important shared local env values:
 
 - `DATABASE_URL`: used by Prisma and app services.
-- `SESSION_SECRET`: signs dashboard sessions.
-- `PASSWORD_PEPPER`: reserved for password hashing.
 - `DEV_DEVICE_SECRET`: secret for the seeded development ESP32 device.
-- `DEVICE_SIGNATURE_MAX_AGE_SECONDS`: maximum age for signed device requests.
+
+Important app-owned values:
+
+- `apps/dashboard/.env`: `PORT` and `SESSION_SECRET`.
+- `apps/device-gateway/.env`: `PORT` and `DEVICE_SIGNATURE_MAX_AGE_SECONDS`.
 
 ## Database And Prisma
 
@@ -286,6 +297,9 @@ cp apps/firmware/include/config.example.h apps/firmware/include/config.h
 ```
 
 `config.h` is ignored by Git because it can contain Wi-Fi and device secrets.
+It is a device-provisioning file, not another application environment file. Set its
+`DEVICE_ID` and `DEVICE_SECRET` to the credentials provisioned in the database, and set
+`GATEWAY_BASE_URL` to an address reachable from the ESP32 rather than `localhost`.
 
 Build firmware:
 

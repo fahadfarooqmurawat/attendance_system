@@ -40,7 +40,13 @@ committed to this repo.
 
 `include/config.h` is ignored by Git because it can contain Wi-Fi and device secrets. If it
 does not exist, the firmware falls back to `include/config.example.h` so editor indexing and
-CI builds can still work.
+CI builds can still work. The example contains non-working placeholders; it is not a second
+source of runtime configuration.
+
+Firmware configuration is provisioned per physical device rather than loaded from the Node
+apps' root `.env`. Set `DEVICE_ID` and `DEVICE_SECRET` to the matching database credentials,
+and use a `GATEWAY_BASE_URL` reachable from the ESP32. On a physical device, `localhost`
+refers to the ESP32 itself.
 
 The fingerprint templates remain inside the scanner. The firmware only sends matched
 template IDs to `device-gateway`.

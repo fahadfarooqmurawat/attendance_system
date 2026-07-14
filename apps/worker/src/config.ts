@@ -7,21 +7,14 @@ import { z } from "zod";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
 const rootEnvPath = resolve(configDir, "../../../.env");
-const appEnvPath = resolve(configDir, "../.env");
 
 if (existsSync(rootEnvPath)) {
   loadEnvFile(rootEnvPath);
 }
 
-if (existsSync(appEnvPath)) {
-  loadEnvFile(appEnvPath);
-}
-
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
-  DEVICE_SIGNATURE_MAX_AGE_SECONDS: z.coerce.number().int().positive().default(300),
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().positive()
+  NODE_ENV: z.enum(["development", "test", "production"]).default("development")
 });
 
 export const env = envSchema.parse(process.env);
