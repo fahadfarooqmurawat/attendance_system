@@ -34,6 +34,10 @@ export function createApp() {
     })
   );
 
+  app.get("/ping", (_req, res) => {
+    res.status(200).send("pong");
+  });
+
   app.get("/healthz", (_req, res) => {
     res.status(200).json(getHealthResponse());
   });
