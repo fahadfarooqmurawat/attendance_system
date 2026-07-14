@@ -7,21 +7,16 @@ services:
 
   device-gateway:
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       DEVICE_SIGNATURE_MAX_AGE_SECONDS: ${DEVICE_SIGNATURE_MAX_AGE_SECONDS:-300}
       NODE_ENV: production
       PORT: 4001
 
   dashboard:
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       NODE_ENV: production
-      PASSWORD_PEPPER: ${PASSWORD_PEPPER:?PASSWORD_PEPPER is required}
       PORT: 3000
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET is required}
 
   worker:
     environment:
-      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL is required}
       NODE_ENV: production
-      WORKER_POLL_INTERVAL_SECONDS: ${WORKER_POLL_INTERVAL_SECONDS:-60}

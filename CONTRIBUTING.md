@@ -46,7 +46,12 @@ pnpm firmware:build
 
 ## Environment And Secrets
 
-- Commit only `*.example` env files.
+- Use the root `.env` for shared infrastructure and tooling values.
+- Keep app-owned values, such as ports and service-specific secrets, in that app's `.env`.
+- Do not duplicate shared values such as `DATABASE_URL` in app env files.
+- Do not create package-level `.env` files.
+- Runtime packages receive configuration from their importing app. Prisma CLI configuration
+  and the seed script are executable tooling and may load the root `.env`.
 - Do not commit `.env`, `.env.production`, firmware `config.h`, database dumps, or real keys.
 - The bundled seed is development-only and must not be run in production.
 

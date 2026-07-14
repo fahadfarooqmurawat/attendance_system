@@ -5,11 +5,10 @@ import { fileURLToPath } from "node:url";
 import { defineConfig } from "prisma/config";
 
 const configDir = dirname(fileURLToPath(import.meta.url));
+const rootEnvPath = resolve(configDir, "../../.env");
 
-for (const envPath of [resolve(configDir, "../../.env"), resolve(configDir, ".env")]) {
-  if (existsSync(envPath)) {
-    loadEnvFile(envPath);
-  }
+if (existsSync(rootEnvPath)) {
+  loadEnvFile(rootEnvPath);
 }
 
 export default defineConfig({

@@ -1,8 +1,8 @@
 import type { NextFunction, Request, Response } from "express";
 import type { Device } from "@attendance/db";
-import { prisma } from "@attendance/db";
 
 import { env } from "../config.js";
+import { prisma } from "../db.js";
 import type { RequestWithRawBody } from "../server.js";
 import { verifyDeviceSignature } from "./device-signature.js";
 
