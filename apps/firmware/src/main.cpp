@@ -4,11 +4,7 @@
 
 #include "wifi_manager.h"
 #include "server_module.h"
-// #if __has_include("config.h")
-// #include "config.h"
-// #else
-#include "config.example.h"
-// #endif
+#include "config.h"
 
 void setup()
 {
