@@ -6,11 +6,9 @@
                 "${workspaceFolder}/**"
             ],
             "defines": [],
-            "compilerPath": "/usr/bin/clang",
             "cStandard": "c17",
             "cppStandard": "c++14",
-            "intelliSenseMode": "macos-clang-x64",
-            "configurationProvider": "platformio.platformio-ide"
+            "compileCommands": "${workspaceFolder}/apps/firmware/compile_commands.json"
         }
     ],
     "version": 4

@@ -32,7 +32,7 @@ pnpm build
 For firmware changes, also run:
 
 ```bash
-pio run -d apps/firmware
+pnpm firmware:build
 ```
 
 ## Database Changes

@@ -6,7 +6,7 @@
 - [ ] `pnpm typecheck`
 - [ ] `pnpm test`
 - [ ] `pnpm build`
-- [ ] `pio run -d apps/firmware`
+- [ ] `pnpm firmware:build` (if firmware changed)
 
 ## Deployment Notes
 
