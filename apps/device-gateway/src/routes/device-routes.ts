@@ -1,7 +1,6 @@
 import { Router, type Response } from "express";
 import { Prisma } from "@attendance/db";
 import {
-  deviceCommandAckSchema,
   deviceEnrollmentResultSchema,
   deviceHeartbeatSchema,
   deviceScanSchema
@@ -23,24 +22,109 @@ deviceRouter.post("/heartbeat", async (req, res) => {
     return;
   }
 
-  const updatedDevice = await prisma.device.update({
-    data: {
-      firmwareVersion: heartbeat.firmwareVersion ?? device.firmwareVersion,
-      lastSeenAt: new Date(),
-      status: "ACTIVE"
-    },
-    select: {
-      id: true,
-      lastSeenAt: true
-    },
-    where: {
-      id: device.id
+  const now = new Date();
+  const heartbeatResponse = await prisma.$transaction(async (tx) => {
+    await tx.enrollmentSession.updateMany({
+      data: {
+        completedAt: now,
+        errorMessage: "Enrollment session expired before completion",
+        status: "EXPIRED"
+      },
+      where: {
+        deviceId: device.id,
+        expiresAt: { lte: now },
+        status: { in: ["PENDING", "CLAIMED"] }
+      }
+    });
+
+    const updatedDevice = await tx.device.update({
+      data: {
+        firmwareVersion: heartbeat.firmwareVersion ?? device.firmwareVersion,
+        lastSeenAt: now,
+        modeChangedAt: heartbeat.reportedMode === device.reportedMode ? undefined : now,
+        reportedMode: heartbeat.reportedMode,
+        status: "ACTIVE"
+      },
+      select: {
+        id: true
+      },
+      where: {
+        id: device.id
+      }
+    });
+
+    const reportedSession = heartbeat.activeEnrollmentSessionId
+      ? await tx.enrollmentSession.findFirst({
+          select: {
+            expiresAt: true,
+            id: true,
+            status: true
+          },
+          where: {
+            deviceId: device.id,
+            id: heartbeat.activeEnrollmentSessionId
+          }
+        })
+      : null;
+
+    const reportedSessionIsActive =
+      reportedSession?.status === "PENDING" || reportedSession?.status === "CLAIMED";
+    const cancelEnrollmentSessionId =
+      heartbeat.activeEnrollmentSessionId && !reportedSessionIsActive
+        ? heartbeat.activeEnrollmentSessionId
+        : null;
+
+    let enrollmentSession = cancelEnrollmentSessionId
+      ? null
+      : reportedSessionIsActive
+        ? reportedSession
+        : await tx.enrollmentSession.findFirst({
+            orderBy: { createdAt: "asc" },
+            select: {
+              expiresAt: true,
+              id: true,
+              status: true
+            },
+            where: {
+              deviceId: device.id,
+              expiresAt: { gt: now },
+              status: { in: ["PENDING", "CLAIMED"] }
+            }
+          });
+
+    if (enrollmentSession?.status === "PENDING") {
+      const claimed = await tx.enrollmentSession.updateMany({
+        data: {
+          claimedAt: now,
+          status: "CLAIMED"
+        },
+        where: {
+          id: enrollmentSession.id,
+          status: "PENDING"
+        }
+      });
+
+      if (claimed.count === 0) {
+        enrollmentSession = null;
+      }
     }
+
+    return {
+      accepted: true as const,
+      cancelEnrollmentSessionId,
+      desiredMode: enrollmentSession ? ("ENROLL" as const) : ("SCAN" as const),
+      deviceId: updatedDevice.id,
+      enrollment: enrollmentSession
+        ? {
+            expiresAt: enrollmentSession.expiresAt.toISOString(),
+            sessionId: enrollmentSession.id
+          }
+        : null,
+      lastSeenAt: now.toISOString()
+    };
   });
 
-  res
-    .status(202)
-    .json({ accepted: true, deviceId: updatedDevice.id, lastSeenAt: updatedDevice.lastSeenAt });
+  res.status(200).json(heartbeatResponse);
 });
 
 deviceRouter.post("/scans", async (req, res) => {
@@ -116,103 +200,6 @@ deviceRouter.post("/scans", async (req, res) => {
   }
 });
 
-deviceRouter.get("/commands", async (_req, res) => {
-  const device = getAuthenticatedDevice(res);
-  const now = new Date();
-
-  await prisma.deviceCommand.updateMany({
-    data: {
-      status: "EXPIRED"
-    },
-    where: {
-      deviceId: device.id,
-      expiresAt: {
-        lt: now
-      },
-      status: {
-        in: ["PENDING", "CLAIMED"]
-      }
-    }
-  });
-
-  const pendingCommands = await prisma.deviceCommand.findMany({
-    orderBy: {
-      createdAt: "asc"
-    },
-    select: {
-      expiresAt: true,
-      id: true,
-      payload: true,
-      type: true
-    },
-    take: 10,
-    where: {
-      deviceId: device.id,
-      OR: [{ expiresAt: null }, { expiresAt: { gt: now } }],
-      status: "PENDING"
-    }
-  });
-
-  if (pendingCommands.length > 0) {
-    await prisma.deviceCommand.updateMany({
-      data: {
-        claimedAt: now,
-        status: "CLAIMED"
-      },
-      where: {
-        id: {
-          in: pendingCommands.map((command) => command.id)
-        },
-        status: "PENDING"
-      }
-    });
-  }
-
-  res.status(200).json({
-    commands: pendingCommands.map((command) => ({
-      commandId: command.id,
-      expiresAt: command.expiresAt,
-      payload: command.payload,
-      type: command.type
-    }))
-  });
-});
-
-deviceRouter.post("/commands/:commandId/ack", async (req, res) => {
-  const acknowledgement = deviceCommandAckSchema.parse({
-    ...req.body,
-    commandId: req.params.commandId
-  });
-  const device = getAuthenticatedDevice(res);
-
-  if (acknowledgement.deviceId !== device.id) {
-    res.status(400).json({ error: "device_id_mismatch" });
-    return;
-  }
-
-  const updatedCommand = await prisma.deviceCommand.updateMany({
-    data: {
-      acknowledgedAt: new Date(),
-      errorMessage:
-        acknowledgement.status === "FAILED"
-          ? (acknowledgement.message ?? "Device reported failure")
-          : null,
-      status: acknowledgement.status
-    },
-    where: {
-      deviceId: device.id,
-      id: acknowledgement.commandId
-    }
-  });
-
-  if (updatedCommand.count === 0) {
-    res.status(404).json({ error: "command_not_found" });
-    return;
-  }
-
-  res.status(202).json({ accepted: true, commandId: acknowledgement.commandId });
-});
-
 deviceRouter.post("/enrollment-result", async (req, res) => {
   const result = deviceEnrollmentResultSchema.parse(req.body);
   const device = getAuthenticatedDevice(res);
@@ -226,7 +213,8 @@ deviceRouter.post("/enrollment-result", async (req, res) => {
     const enrollmentSession = await tx.enrollmentSession.findFirst({
       select: {
         employeeId: true,
-        id: true
+        id: true,
+        status: true
       },
       where: {
         deviceId: device.id,
@@ -236,6 +224,14 @@ deviceRouter.post("/enrollment-result", async (req, res) => {
 
     if (!enrollmentSession) {
       return null;
+    }
+
+    if (!["PENDING", "CLAIMED"].includes(enrollmentSession.status)) {
+      return {
+        conflict: enrollmentSession.status !== result.status,
+        id: enrollmentSession.id,
+        status: enrollmentSession.status
+      };
     }
 
     if (result.status === "SUCCEEDED") {
@@ -261,22 +257,11 @@ deviceRouter.post("/enrollment-result", async (req, res) => {
       });
     }
 
-    await tx.deviceCommand.updateMany({
-      data: {
-        acknowledgedAt: new Date(),
-        errorMessage: result.status === "SUCCEEDED" ? null : result.message,
-        status: result.status === "SUCCEEDED" ? "ACKNOWLEDGED" : "FAILED"
-      },
-      where: {
-        enrollmentSessionId: enrollmentSession.id
-      }
-    });
-
-    return tx.enrollmentSession.update({
+    const completedEnrollment = await tx.enrollmentSession.update({
       data: {
         completedAt: new Date(),
         errorMessage: result.status === "SUCCEEDED" ? null : result.message,
-        scannerTemplateId: result.scannerTemplateId,
+        scannerTemplateId: result.status === "SUCCEEDED" ? result.scannerTemplateId : null,
         status: result.status
       },
       select: {
@@ -287,10 +272,21 @@ deviceRouter.post("/enrollment-result", async (req, res) => {
         id: enrollmentSession.id
       }
     });
+
+    return { ...completedEnrollment, conflict: false };
   });
 
   if (!updatedEnrollment) {
     res.status(404).json({ error: "enrollment_session_not_found" });
+    return;
+  }
+
+  if (updatedEnrollment.conflict) {
+    res.status(409).json({
+      error: "enrollment_session_already_completed",
+      enrollmentSessionId: updatedEnrollment.id,
+      status: updatedEnrollment.status
+    });
     return;
   }
 
