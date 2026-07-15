@@ -17,9 +17,9 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
   const timestamp = req.header("x-device-timestamp");
   const signature = req.header("x-device-signature");
 
-  console.log(deviceId);
-  console.log(timestamp);
-  console.log(signature);
+  // console.log(deviceId);
+  // console.log(timestamp);
+  // console.log(signature);
 
   if (!deviceId || !timestamp || !signature) {
     res.status(401).json({ error: "missing_device_credentials" });
