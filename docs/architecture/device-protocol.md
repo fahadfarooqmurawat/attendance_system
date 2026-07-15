@@ -27,10 +27,60 @@ Production devices must be provisioned with unique random secrets.
 ```text
 POST /device/heartbeat
 POST /device/scans
-GET  /device/commands
-POST /device/commands/:commandId/ack
 POST /device/enrollment-result
 ```
+
+## Heartbeat And Device Mode
+
+The heartbeat is the device control-plane exchange. It reports the ESP32's observed state,
+and the response tells the ESP32 whether it should scan normally or perform an enrollment.
+
+Request:
+
+```json
+{
+  "deviceId": "esp32-dev-001",
+  "firmwareVersion": "0.1.0",
+  "reportedMode": "SCAN",
+  "activeEnrollmentSessionId": null
+}
+```
+
+Response with no enrollment work:
+
+```json
+{
+  "accepted": true,
+  "deviceId": "esp32-dev-001",
+  "lastSeenAt": "2026-07-14T12:00:00.000Z",
+  "desiredMode": "SCAN",
+  "enrollment": null,
+  "cancelEnrollmentSessionId": null
+}
+```
+
+Response with enrollment work:
+
+```json
+{
+  "accepted": true,
+  "deviceId": "esp32-dev-001",
+  "lastSeenAt": "2026-07-14T12:00:00.000Z",
+  "desiredMode": "ENROLL",
+  "enrollment": {
+    "sessionId": "enrollment-session-id",
+    "expiresAt": "2026-07-14T12:05:00.000Z"
+  },
+  "cancelEnrollmentSessionId": null
+}
+```
+
+The first heartbeat that receives a pending enrollment changes its status to `CLAIMED`.
+Claimed sessions are returned again on later heartbeats until the ESP32 submits an enrollment
+result. This makes a lost heartbeat response safe: the session ID is the idempotency key.
+
+When an active enrollment has been cancelled or expired, `desiredMode` is `SCAN` and
+`cancelEnrollmentSessionId` identifies the workflow the ESP32 must abort.
 
 ## Scan Payload
 
@@ -46,3 +96,19 @@ POST /device/enrollment-result
 
 The gateway resolves `deviceId + scannerTemplateId` to an employee. If no active
 enrollment exists, the scan remains stored but unresolved.
+
+## Enrollment Result
+
+Successful enrollment results include the scanner's assigned template ID:
+
+```json
+{
+  "deviceId": "esp32-dev-001",
+  "enrollmentSessionId": "enrollment-session-id",
+  "scannerTemplateId": 42,
+  "status": "SUCCEEDED"
+}
+```
+
+Failed results use `status: "FAILED"` and require a human-readable `message`. Cancelled
+results may include a message and do not include a scanner template ID.

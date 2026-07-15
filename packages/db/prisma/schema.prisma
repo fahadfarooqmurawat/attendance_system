@@ -17,18 +17,9 @@ enum DeviceStatus {
   OFFLINE
 }
 
-enum DeviceCommandStatus {
-  PENDING
-  CLAIMED
-  ACKNOWLEDGED
-  FAILED
-  EXPIRED
-}
-
-enum DeviceCommandType {
-  START_ENROLLMENT
-  CANCEL_ENROLLMENT
-  SYNC_CONFIG
+enum DeviceMode {
+  SCAN
+  ENROLL
 }
 
 enum EnrollmentSessionStatus {
@@ -94,31 +85,31 @@ enum ReportExportStatus {
 }
 
 model Employee {
-  id                  String                       @id @default(cuid())
-  email               String                       @unique
-  employeeCode        String?                      @unique
-  fullName            String
-  passwordHash        String
-  status              EmployeeStatus              @default(ACTIVE)
-  managerId           String?
-  isHr                Boolean                      @default(false)
-  isOwner             Boolean                      @default(false)
-  timezone            String                       @default("Asia/Karachi")
-  createdAt           DateTime                     @default(now())
-  updatedAt           DateTime                     @updatedAt
-  manager             Employee?                    @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
-  directReports       Employee[]                   @relation("EmployeeManager")
-  approvalSteps       ApprovalStep[]               @relation("ApprovalStepApprover")
-  auditLogs           AuditLog[]                   @relation("AuditLogActor")
-  fingerprintRecords  FingerprintEnrollment[]
-  requestedEnrollments EnrollmentSession[]          @relation("EnrollmentRequestedBy")
-  enrollmentSessions  EnrollmentSession[]
-  manualRequests      ManualAttendanceRequest[]    @relation("ManualRequestEmployee")
-  createdRequests     ManualAttendanceRequest[]    @relation("ManualRequestCreatedBy")
-  notifications       Notification[]
-  reportExports       ReportExport[]
-  scanEvents          ScanEvent[]
-  shiftAssignments    EmployeeShiftAssignment[]
+  id                   String                    @id @default(cuid())
+  email                String                    @unique
+  employeeCode         String?                   @unique
+  fullName             String
+  passwordHash         String
+  status               EmployeeStatus            @default(ACTIVE)
+  managerId            String?
+  isHr                 Boolean                   @default(false)
+  isOwner              Boolean                   @default(false)
+  timezone             String                    @default("Asia/Karachi")
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  manager              Employee?                 @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
+  directReports        Employee[]                @relation("EmployeeManager")
+  approvalSteps        ApprovalStep[]            @relation("ApprovalStepApprover")
+  auditLogs            AuditLog[]                @relation("AuditLogActor")
+  fingerprintRecords   FingerprintEnrollment[]
+  requestedEnrollments EnrollmentSession[]       @relation("EnrollmentRequestedBy")
+  enrollmentSessions   EnrollmentSession[]
+  manualRequests       ManualAttendanceRequest[] @relation("ManualRequestEmployee")
+  createdRequests      ManualAttendanceRequest[] @relation("ManualRequestCreatedBy")
+  notifications        Notification[]
+  reportExports        ReportExport[]
+  scanEvents           ScanEvent[]
+  shiftAssignments     EmployeeShiftAssignment[]
 
   @@index([managerId])
 }
@@ -129,11 +120,12 @@ model Device {
   location               String?
   apiKeyHash             String
   status                 DeviceStatus            @default(ACTIVE)
+  reportedMode           DeviceMode              @default(SCAN)
+  modeChangedAt          DateTime                @default(now())
   firmwareVersion        String?
   lastSeenAt             DateTime?
   createdAt              DateTime                @default(now())
   updatedAt              DateTime                @updatedAt
-  commands               DeviceCommand[]
   enrollmentSessions     EnrollmentSession[]
   fingerprintEnrollments FingerprintEnrollment[]
   scanEvents             ScanEvent[]
@@ -169,32 +161,12 @@ model EnrollmentSession {
   completedAt           DateTime?
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
-  command               DeviceCommand?
   device                Device                  @relation(fields: [deviceId], references: [id], onDelete: Cascade)
   employee              Employee                @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   requestedBy           Employee                @relation("EnrollmentRequestedBy", fields: [requestedByEmployeeId], references: [id])
 
   @@index([deviceId, status, expiresAt])
   @@index([employeeId, status])
-}
-
-model DeviceCommand {
-  id                  String              @id @default(cuid())
-  deviceId            String
-  enrollmentSessionId String?             @unique
-  type                DeviceCommandType
-  status              DeviceCommandStatus @default(PENDING)
-  payload             Json
-  errorMessage        String?
-  claimedAt           DateTime?
-  acknowledgedAt      DateTime?
-  expiresAt           DateTime?
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  device              Device              @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  enrollmentSession   EnrollmentSession?  @relation(fields: [enrollmentSessionId], references: [id], onDelete: Cascade)
-
-  @@index([deviceId, status, createdAt])
 }
 
 model ScanEvent {
@@ -205,29 +177,29 @@ model ScanEvent {
   deviceScanSequence Int?
   firmwareVersion    String?
   matchConfidence    Decimal?                  @db.Decimal(5, 4)
-  rawPayload          Json?
-  serverReceivedAt    DateTime                  @default(now())
-  createdAt           DateTime                  @default(now())
-  removedByRequests   ManualAttendanceRequest[] @relation("RemovedScan")
-  device              Device                    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
-  employee            Employee?                 @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  rawPayload         Json?
+  serverReceivedAt   DateTime                  @default(now())
+  createdAt          DateTime                  @default(now())
+  removedByRequests  ManualAttendanceRequest[] @relation("RemovedScan")
+  device             Device                    @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  employee           Employee?                 @relation(fields: [employeeId], references: [id], onDelete: SetNull)
 
+  @@unique([deviceId, deviceScanSequence])
   @@index([employeeId, serverReceivedAt])
   @@index([deviceId, serverReceivedAt])
-  @@unique([deviceId, deviceScanSequence])
 }
 
 model Shift {
-  id          String                    @id @default(cuid())
-  name        String
-  timezone    String                    @default("Asia/Karachi")
-  startTime   String
-  endTime     String
-  workdays    Int[]
-  graceMinutes Int                      @default(0)
-  createdAt   DateTime                  @default(now())
-  updatedAt   DateTime                  @updatedAt
-  assignments EmployeeShiftAssignment[]
+  id           String                    @id @default(cuid())
+  name         String
+  timezone     String                    @default("Asia/Karachi")
+  startTime    String
+  endTime      String
+  workdays     Int[]
+  graceMinutes Int                       @default(0)
+  createdAt    DateTime                  @default(now())
+  updatedAt    DateTime                  @updatedAt
+  assignments  EmployeeShiftAssignment[]
 }
 
 model EmployeeShiftAssignment {
@@ -244,80 +216,80 @@ model EmployeeShiftAssignment {
 }
 
 model ManualAttendanceRequest {
-  id                  String                         @id @default(cuid())
+  id                  String                        @id @default(cuid())
   employeeId          String
   createdByEmployeeId String
   type                ManualAttendanceRequestType
   requestedTimestamp  DateTime?
   targetScanEventId   String?
   reason              String
-  status              ManualAttendanceRequestStatus  @default(PENDING_MANAGER)
+  status              ManualAttendanceRequestStatus @default(PENDING_MANAGER)
   appliedAt           DateTime?
-  createdAt           DateTime                       @default(now())
-  updatedAt           DateTime                       @updatedAt
+  createdAt           DateTime                      @default(now())
+  updatedAt           DateTime                      @updatedAt
   approvalSteps       ApprovalStep[]
-  createdBy           Employee                       @relation("ManualRequestCreatedBy", fields: [createdByEmployeeId], references: [id])
-  employee            Employee                       @relation("ManualRequestEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
-  targetScanEvent     ScanEvent?                     @relation("RemovedScan", fields: [targetScanEventId], references: [id], onDelete: SetNull)
+  createdBy           Employee                      @relation("ManualRequestCreatedBy", fields: [createdByEmployeeId], references: [id])
+  employee            Employee                      @relation("ManualRequestEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  targetScanEvent     ScanEvent?                    @relation("RemovedScan", fields: [targetScanEventId], references: [id], onDelete: SetNull)
 
   @@index([employeeId, createdAt])
   @@index([status, createdAt])
 }
 
 model ApprovalStep {
-  id                          String                  @id @default(cuid())
-  manualAttendanceRequestId   String
-  sequence                    Int
-  approverEmployeeId          String
-  approverKind                ApproverKind
-  status                      ApprovalStatus          @default(PENDING)
-  comment                     String?
-  decidedAt                   DateTime?
-  createdAt                   DateTime                @default(now())
-  approver                    Employee                @relation("ApprovalStepApprover", fields: [approverEmployeeId], references: [id], onDelete: Cascade)
-  manualAttendanceRequest     ManualAttendanceRequest @relation(fields: [manualAttendanceRequestId], references: [id], onDelete: Cascade)
+  id                        String                  @id @default(cuid())
+  manualAttendanceRequestId String
+  sequence                  Int
+  approverEmployeeId        String
+  approverKind              ApproverKind
+  status                    ApprovalStatus          @default(PENDING)
+  comment                   String?
+  decidedAt                 DateTime?
+  createdAt                 DateTime                @default(now())
+  approver                  Employee                @relation("ApprovalStepApprover", fields: [approverEmployeeId], references: [id], onDelete: Cascade)
+  manualAttendanceRequest   ManualAttendanceRequest @relation(fields: [manualAttendanceRequestId], references: [id], onDelete: Cascade)
 
   @@unique([manualAttendanceRequestId, sequence])
   @@index([approverEmployeeId, status])
 }
 
 model Notification {
-  id          String             @id @default(cuid())
-  employeeId  String
-  type        NotificationType
-  status      NotificationStatus @default(UNREAD)
-  title       String
-  body        String
-  payload     Json?
-  readAt      DateTime?
-  createdAt   DateTime           @default(now())
-  employee    Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  id         String             @id @default(cuid())
+  employeeId String
+  type       NotificationType
+  status     NotificationStatus @default(UNREAD)
+  title      String
+  body       String
+  payload    Json?
+  readAt     DateTime?
+  createdAt  DateTime           @default(now())
+  employee   Employee           @relation(fields: [employeeId], references: [id], onDelete: Cascade)
 
   @@index([employeeId, status, createdAt])
 }
 
 model AuditLog {
-  id          String   @id @default(cuid())
-  actorId     String?
-  action      String
-  entityType  String
-  entityId    String
-  before      Json?
-  after       Json?
-  createdAt   DateTime @default(now())
-  actor       Employee? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
+  id         String    @id @default(cuid())
+  actorId    String?
+  action     String
+  entityType String
+  entityId   String
+  before     Json?
+  after      Json?
+  createdAt  DateTime  @default(now())
+  actor      Employee? @relation("AuditLogActor", fields: [actorId], references: [id], onDelete: SetNull)
 
   @@index([entityType, entityId, createdAt])
   @@index([actorId, createdAt])
 }
 
 model JobRun {
-  id          String   @id @default(cuid())
-  jobName     String
-  status      String
-  startedAt   DateTime @default(now())
-  finishedAt  DateTime?
-  details     Json?
+  id         String    @id @default(cuid())
+  jobName    String
+  status     String
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+  details    Json?
 
   @@index([jobName, startedAt])
 }
