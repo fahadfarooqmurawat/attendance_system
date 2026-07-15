@@ -12,7 +12,6 @@ export type AuthenticatedDevice = Pick<
 >;
 
 export async function requireDeviceAuth(req: Request, res: Response, next: NextFunction) {
-  console.log("i am here");
 
   const deviceId = req.header("x-device-id");
   const timestamp = req.header("x-device-timestamp");
@@ -42,7 +41,7 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
       }
     });
 
-    console.log(device);
+    //console.log(device);
 
     if (!device) {
       res.status(401).json({ error: "invalid_device_credentials" });

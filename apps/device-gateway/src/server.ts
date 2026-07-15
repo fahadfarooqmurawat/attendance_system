@@ -24,7 +24,7 @@ export function createApp() {
       }
     })
   );
-  //app.use(pinoHttp());
+  app.use(pinoHttp());
   app.use(
     rateLimit({
       legacyHeaders: false,
