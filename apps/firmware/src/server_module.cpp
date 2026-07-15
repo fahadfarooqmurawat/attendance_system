@@ -6,13 +6,13 @@
 #include "wifi_manager.h"
 #include "scanner_module.h"
 #include "device_signature.h"
+#include "network_time.h"
 #if __has_include("config.h")
 #include "config.h"
 #else
 #include "config.example.h"
 #endif
 // ArduinoJson for JSON serialization
-
 
 namespace
 {
@@ -35,7 +35,7 @@ bool isServerConnected()
     return serverConnected;
 }
 
-void pingServer(const char* url)
+void pingServer(const char *url)
 {
     // Don't try to ping if WiFi isn't connected
     if (!isConnected())
@@ -85,9 +85,9 @@ void pingServer(const char* url)
 }
 
 void sendHeartbeat(
-    const char* url,
-    const char* deviceId,
-    const char* firmwareVersion,
+    const char *url,
+    const char *deviceId,
+    const char *firmwareVersion,
     ScannerMode mode)
 {
     if (!isConnected())
@@ -114,7 +114,7 @@ void sendHeartbeat(
     serializeJson(doc, requestBody);
 
     // Build signature headers using the device secret and current timestamp
-    String timestamp = "1784036743374";
+    String timestamp = getTimestamp();
     String signature = createDeviceSignature("POST", "/device/heartbeat", requestBody, DEVICE_SECRET, timestamp);
 
     http.addHeader("x-device-id", deviceId);

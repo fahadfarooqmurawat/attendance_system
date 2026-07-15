@@ -71,8 +71,6 @@ export async function requireDeviceAuth(req: Request, res: Response, next: NextF
       { maxAgeSeconds: env.DEVICE_SIGNATURE_MAX_AGE_SECONDS }
     );
 
-    console.log(verification);
-
     if (!verification.ok) {
       res.status(401).json({ error: verification.reason });
       return;
