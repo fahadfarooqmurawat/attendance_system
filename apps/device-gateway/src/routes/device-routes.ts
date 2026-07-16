@@ -1,5 +1,6 @@
 import { Router, type Response } from "express";
 import { Prisma } from "@attendance/db";
+import { ZodError } from "zod";
 import {
   deviceEnrollmentResultSchema,
   deviceHeartbeatSchema,
@@ -14,72 +15,60 @@ export const deviceRouter = Router();
 deviceRouter.use(requireDeviceAuth);
 
 deviceRouter.post("/heartbeat", async (req, res) => {
-  const heartbeat = deviceHeartbeatSchema.parse(req.body);
-  const device = getAuthenticatedDevice(res);
+  let heartbeat;
 
-  if (heartbeat.deviceId !== device.id) {
-    res.status(400).json({ error: "device_id_mismatch" });
-    return;
+  try {
+    heartbeat = deviceHeartbeatSchema.parse(req.body);
+  } catch (error) {
+    if (error instanceof ZodError) {
+      res.status(400).json({ error: "invalid_request", issues: error.issues });
+      return;
+    }
+
+    throw error;
   }
 
-  const now = new Date();
-  const heartbeatResponse = await prisma.$transaction(async (tx) => {
-    await tx.enrollmentSession.updateMany({
-      data: {
-        completedAt: now,
-        errorMessage: "Enrollment session expired before completion",
-        status: "EXPIRED"
-      },
-      where: {
-        deviceId: device.id,
-        expiresAt: { lte: now },
-        status: { in: ["PENDING", "CLAIMED"] }
-      }
-    });
+  try {
+    const device = getAuthenticatedDevice(res);
 
-    const updatedDevice = await tx.device.update({
-      data: {
-        firmwareVersion: heartbeat.firmwareVersion ?? device.firmwareVersion,
-        lastSeenAt: now,
-        modeChangedAt: heartbeat.reportedMode === device.reportedMode ? undefined : now,
-        reportedMode: heartbeat.reportedMode,
-        status: "ACTIVE"
-      },
-      select: {
-        id: true
-      },
-      where: {
-        id: device.id
-      }
-    });
+    if (heartbeat.deviceId !== device.id) {
+      res.status(400).json({ error: "device_id_mismatch" });
+      return;
+    }
 
-    const reportedSession = heartbeat.activeEnrollmentSessionId
-      ? await tx.enrollmentSession.findFirst({
-          select: {
-            expiresAt: true,
-            id: true,
-            status: true
-          },
-          where: {
-            deviceId: device.id,
-            id: heartbeat.activeEnrollmentSessionId
-          }
-        })
-      : null;
+    const now = new Date();
+    const heartbeatResponse = await prisma.$transaction(async (tx) => {
+      await tx.enrollmentSession.updateMany({
+        data: {
+          completedAt: now,
+          errorMessage: "Enrollment session expired before completion",
+          status: "EXPIRED"
+        },
+        where: {
+          deviceId: device.id,
+          expiresAt: { lte: now },
+          status: { in: ["PENDING", "CLAIMED"] }
+        }
+      });
 
-    const reportedSessionIsActive =
-      reportedSession?.status === "PENDING" || reportedSession?.status === "CLAIMED";
-    const cancelEnrollmentSessionId =
-      heartbeat.activeEnrollmentSessionId && !reportedSessionIsActive
-        ? heartbeat.activeEnrollmentSessionId
-        : null;
+      const updatedDevice = await tx.device.update({
+        data: {
+          firmwareVersion: heartbeat.firmwareVersion ?? device.firmwareVersion,
+          lastSeenAt: now,
+          modeChangedAt: heartbeat.reportedMode === device.reportedMode ? undefined : now,
+          reportedMode: heartbeat.reportedMode,
+          status: "ACTIVE"
+        },
+        select: {
+          id: true
+        },
+        where: {
+          id: device.id
+        }
+      });
 
-    let enrollmentSession = cancelEnrollmentSessionId
-      ? null
-      : reportedSessionIsActive
-        ? reportedSession
-        : await tx.enrollmentSession.findFirst({
-            orderBy: { createdAt: "asc" },
+      const reportedSession = heartbeat.activeEnrollmentSessionId
+        ? await tx.enrollmentSession.findFirst({
             select: {
               expiresAt: true,
               id: true,
@@ -87,115 +76,157 @@ deviceRouter.post("/heartbeat", async (req, res) => {
             },
             where: {
               deviceId: device.id,
-              expiresAt: { gt: now },
-              status: { in: ["PENDING", "CLAIMED"] }
+              id: heartbeat.activeEnrollmentSessionId
             }
-          });
+          })
+        : null;
 
-    if (enrollmentSession?.status === "PENDING") {
-      const claimed = await tx.enrollmentSession.updateMany({
-        data: {
-          claimedAt: now,
-          status: "CLAIMED"
-        },
-        where: {
-          id: enrollmentSession.id,
-          status: "PENDING"
-        }
-      });
+      const reportedSessionIsActive =
+        reportedSession?.status === "PENDING" || reportedSession?.status === "CLAIMED";
+      const cancelEnrollmentSessionId =
+        heartbeat.activeEnrollmentSessionId && !reportedSessionIsActive
+          ? heartbeat.activeEnrollmentSessionId
+          : null;
 
-      if (claimed.count === 0) {
-        enrollmentSession = null;
-      }
-    }
+      let enrollmentSession = cancelEnrollmentSessionId
+        ? null
+        : reportedSessionIsActive
+          ? reportedSession
+          : await tx.enrollmentSession.findFirst({
+              orderBy: { createdAt: "asc" },
+              select: {
+                expiresAt: true,
+                id: true,
+                status: true
+              },
+              where: {
+                deviceId: device.id,
+                expiresAt: { gt: now },
+                status: { in: ["PENDING", "CLAIMED"] }
+              }
+            });
 
-    return {
-      accepted: true as const,
-      cancelEnrollmentSessionId,
-      desiredMode: enrollmentSession ? ("ENROLL" as const) : ("SCAN" as const),
-      deviceId: updatedDevice.id,
-      enrollment: enrollmentSession
-        ? {
-            expiresAt: enrollmentSession.expiresAt.toISOString(),
-            sessionId: enrollmentSession.id
+      if (enrollmentSession?.status === "PENDING") {
+        const claimed = await tx.enrollmentSession.updateMany({
+          data: {
+            claimedAt: now,
+            status: "CLAIMED"
+          },
+          where: {
+            id: enrollmentSession.id,
+            status: "PENDING"
           }
-        : null,
-      lastSeenAt: now.toISOString()
-    };
-  });
+        });
 
-  res.status(200).json(heartbeatResponse);
+        if (claimed.count === 0) {
+          enrollmentSession = null;
+        }
+      }
+
+      return {
+        accepted: true as const,
+        cancelEnrollmentSessionId,
+        desiredMode: enrollmentSession ? ("ENROLL" as const) : ("SCAN" as const),
+        deviceId: updatedDevice.id,
+        enrollment: enrollmentSession
+          ? {
+              expiresAt: enrollmentSession.expiresAt.toISOString(),
+              sessionId: enrollmentSession.id
+            }
+          : null,
+        lastSeenAt: now.toISOString()
+      };
+    });
+
+    res.status(202).json(heartbeatResponse);
+  } catch (error) {
+    console.error("❌ HEARTBEAT ERROR:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "");
+    res.status(500).json({
+      error: "heartbeat_processing_failed",
+      details: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 deviceRouter.post("/scans", async (req, res) => {
-  const scan = deviceScanSchema.parse(req.body);
-  const device = getAuthenticatedDevice(res);
-
-  if (scan.deviceId !== device.id) {
-    res.status(400).json({ error: "device_id_mismatch" });
-    return;
-  }
-
-  const enrollment = await prisma.fingerprintEnrollment.findFirst({
-    select: {
-      employeeId: true
-    },
-    where: {
-      deviceId: device.id,
-      scannerTemplateId: scan.scannerTemplateId,
-      status: "ACTIVE"
-    }
-  });
-
-  const data = {
-    deviceId: device.id,
-    deviceScanSequence: scan.deviceScanSequence,
-    employeeId: enrollment?.employeeId,
-    firmwareVersion: scan.firmwareVersion,
-    matchConfidence:
-      scan.matchConfidence === undefined ? undefined : new Prisma.Decimal(scan.matchConfidence),
-    rawPayload: scan as Prisma.InputJsonValue,
-    scannerTemplateId: scan.scannerTemplateId
-  } satisfies Prisma.ScanEventUncheckedCreateInput;
-
   try {
-    const createdScan = await prisma.scanEvent.create({
-      data,
-      select: {
-        employeeId: true,
-        id: true
-      }
-    });
+    const scan = deviceScanSchema.parse(req.body);
+    const device = getAuthenticatedDevice(res);
 
-    res.status(202).json({
-      accepted: true,
-      duplicate: false,
-      employeeId: createdScan.employeeId,
-      scanEventId: createdScan.id,
-      scannerTemplateId: scan.scannerTemplateId
-    });
-  } catch (error) {
-    if (!isUniqueConstraintError(error) || scan.deviceScanSequence === undefined) {
-      throw error;
+    if (scan.deviceId !== device.id) {
+      res.status(400).json({ error: "device_id_mismatch" });
+      return;
     }
 
-    const existingScan = await prisma.scanEvent.findFirst({
+    const enrollment = await prisma.fingerprintEnrollment.findFirst({
       select: {
-        employeeId: true,
-        id: true
+        employeeId: true
       },
       where: {
         deviceId: device.id,
-        deviceScanSequence: scan.deviceScanSequence
+        scannerTemplateId: scan.scannerTemplateId,
+        status: "ACTIVE"
       }
     });
 
-    res.status(202).json({
-      accepted: true,
-      duplicate: true,
-      employeeId: existingScan?.employeeId ?? null,
-      scanEventId: existingScan?.id ?? null,
+    const data = {
+      deviceId: device.id,
+      deviceScanSequence: scan.deviceScanSequence,
+      employeeId: enrollment?.employeeId,
+      firmwareVersion: scan.firmwareVersion,
+      matchConfidence:
+        scan.matchConfidence === undefined ? undefined : new Prisma.Decimal(scan.matchConfidence),
+      rawPayload: scan as Prisma.InputJsonValue,
       scannerTemplateId: scan.scannerTemplateId
+    } satisfies Prisma.ScanEventUncheckedCreateInput;
+
+    try {
+      const createdScan = await prisma.scanEvent.create({
+        data,
+        select: {
+          employeeId: true,
+          id: true
+        }
+      });
+
+      res.status(202).json({
+        accepted: true,
+        duplicate: false,
+        employeeId: createdScan.employeeId,
+        scanEventId: createdScan.id,
+        scannerTemplateId: scan.scannerTemplateId
+      });
+    } catch (error) {
+      if (!isUniqueConstraintError(error) || scan.deviceScanSequence === undefined) {
+        throw error;
+      }
+
+      const existingScan = await prisma.scanEvent.findFirst({
+        select: {
+          employeeId: true,
+          id: true
+        },
+        where: {
+          deviceId: device.id,
+          deviceScanSequence: scan.deviceScanSequence
+        }
+      });
+
+      res.status(202).json({
+        accepted: true,
+        duplicate: true,
+        employeeId: existingScan?.employeeId ?? null,
+        scanEventId: existingScan?.id ?? null,
+        scannerTemplateId: scan.scannerTemplateId
+      });
+    }
+  } catch (error) {
+    console.error("❌ SCAN ERROR:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : "");
+    res.status(500).json({
+      error: "scan_processing_failed",
+      details: error instanceof Error ? error.message : String(error)
     });
   }
 });

@@ -30,6 +30,7 @@ void setup()
     }
 
     setupNetworkTime();
+    initializeScanner();
     // pingServer(GATEWAY_BASE_URL);
 }
 
@@ -39,14 +40,14 @@ void loop()
 
     ScannerMode mode = getMode();
 
-    sendHeartbeat(
-        GATEWAY_BASE_URL,
-        DEVICE_ID,
-        FIRMWARE_VERSION,
-        mode);
+    sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, mode);
 
-    // String timestamp = getTimestamp();
-    // Serial.print("Current timestamp: ");
-    // Serial.println(timestamp);
-    delay(10000);
+    ScanResult scanResult = scanFingerprint();
+
+    if (scanResult.success)
+    {
+        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, scanResult);
+    }
+
+    delay(50);
 }

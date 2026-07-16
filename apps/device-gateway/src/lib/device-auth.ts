@@ -12,7 +12,6 @@ export type AuthenticatedDevice = Pick<
 >;
 
 export async function requireDeviceAuth(req: Request, res: Response, next: NextFunction) {
-
   const deviceId = req.header("x-device-id");
   const timestamp = req.header("x-device-timestamp");
   const signature = req.header("x-device-signature");

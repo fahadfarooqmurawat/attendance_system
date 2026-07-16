@@ -24,7 +24,7 @@ export function createApp() {
       }
     })
   );
-  app.use(pinoHttp());
+  //app.use(pinoHttp());
   app.use(
     rateLimit({
       legacyHeaders: false,
@@ -54,6 +54,11 @@ export function createApp() {
       if (error instanceof SyntaxError) {
         res.status(400).json({ error: "invalid_json" });
         return;
+      }
+
+      console.error("Unhandled error:", error);
+      if (error instanceof Error) {
+        console.error(error.stack);
       }
 
       res.status(500).json({ error: "internal_server_error" });
