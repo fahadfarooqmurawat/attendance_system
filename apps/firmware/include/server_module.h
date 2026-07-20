@@ -10,6 +10,8 @@ void pingServer(const char *serverUrl);
 
 bool isServerConnected();
 
+bool timeForHeartbeat();
+
 void sendHeartbeat(
     const char *url,
     const char *deviceId,

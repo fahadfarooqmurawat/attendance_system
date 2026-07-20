@@ -17,9 +17,11 @@ void setup()
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println("Attendance firmware scaffold");
-    Serial.print("Device ID: ");
-    Serial.println(DEVICE_ID);
+    Serial.println();
+    Serial.printf("Attendance firmware version: %s\n", FIRMWARE_VERSION);
+    Serial.printf("Device ID: %s\n", DEVICE_ID);
+
+    initializeScanner();
 
     if (connectWifi(WIFI_SSID, WIFI_PASSWORD) == WifiStatus::FAILED)
     {
@@ -30,24 +32,31 @@ void setup()
     }
 
     setupNetworkTime();
-    initializeScanner();
-    // pingServer(GATEWAY_BASE_URL);
+
+    Serial.println("Place an enrolled finger on the sensor.");
 }
 
 void loop()
 {
-    maintainConnection();
-
-    ScannerMode mode = getMode();
-
-    sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, mode);
-
-    ScanResult scanResult = scanFingerprint();
-
-    if (scanResult.success)
+    if (timeForHeartbeat())
     {
-        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, scanResult);
+        sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, getMode());
     }
 
-    delay(50);
+    const ScanResult result = scanFingerprint();
+
+    if (result.success)
+    {
+        Serial.printf("MATCH: template ID %u, confidence %u\n",
+                      static_cast<unsigned>(result.scannerTemplateId),
+                      static_cast<unsigned>(result.matchConfidence));
+        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, result);
+    }
+    else if (!result.errorMessage.isEmpty())
+    {
+        Serial.print("SCAN: ");
+        Serial.println(result.errorMessage);
+    }
+
+    delay(250);
 }
