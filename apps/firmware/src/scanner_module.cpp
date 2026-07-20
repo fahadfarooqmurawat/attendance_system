@@ -4,6 +4,7 @@
 
 namespace
 {
+    ScannerMode currentMode = ScannerMode::SCAN;
     HardwareSerial scannerSerial(2);
     Adafruit_Fingerprint finger(&scannerSerial);
     bool sensorAvailable = false;
@@ -47,7 +48,7 @@ void initializeScanner()
 
 ScannerMode getMode()
 {
-    return ScannerMode::SCAN;
+    return currentMode;
 }
 
 ScanResult scanFingerprint()
