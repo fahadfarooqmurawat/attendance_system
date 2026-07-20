@@ -93,7 +93,10 @@ ScanResult scanFingerprint()
 
     result.success = true;
     result.scannerTemplateId = finger.fingerID;
-    result.matchConfidence = static_cast<float>(finger.confidence);
+    // result.matchConfidence = static_cast<float>(finger.confidence);
+    result.matchConfidence = (finger.confidence >= 100)
+                                 ? 1.0f
+                                 : static_cast<float>(finger.confidence) / 100.0f;
     scanSequence++;
     return result;
 }

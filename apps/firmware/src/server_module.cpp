@@ -23,8 +23,8 @@ namespace
     unsigned long lastPingTime = 0;
     unsigned long lastHeartbeatTime = 0;
 
-    constexpr unsigned long PING_INTERVAL = 5000;
-    constexpr unsigned long HEARTBEAT_INTERVAL = 5000;
+    // constexpr unsigned long PING_INTERVAL = 5000;
+    // constexpr unsigned long HEARTBEAT_INTERVAL = 5000;
 }
 
 // void initializeServer(const char* url)
@@ -47,7 +47,7 @@ void pingServer(const char *url)
     }
 
     // Ping only once every 5 seconds
-    if (millis() - lastPingTime < PING_INTERVAL)
+    if (millis() - lastPingTime < SERVER_PING_TIMEOUT)
     {
         return;
     }
