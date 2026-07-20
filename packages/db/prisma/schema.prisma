@@ -92,11 +92,11 @@ model Employee {
   passwordHash         String
   status               EmployeeStatus            @default(ACTIVE)
   managerId            String?
-  isHr                 Boolean                   @default(false)
-  isOwner              Boolean                   @default(false)
+  roleId               String?
   timezone             String                    @default("Asia/Karachi")
   createdAt            DateTime                  @default(now())
   updatedAt            DateTime                  @updatedAt
+  role                 Role?                     @relation(fields: [roleId], references: [id], onDelete: SetNull)
   manager              Employee?                 @relation("EmployeeManager", fields: [managerId], references: [id], onDelete: SetNull)
   directReports        Employee[]                @relation("EmployeeManager")
   approvalSteps        ApprovalStep[]            @relation("ApprovalStepApprover")
@@ -307,4 +307,28 @@ model ReportExport {
   requestedBy   Employee           @relation(fields: [requestedById], references: [id], onDelete: Cascade)
 
   @@index([requestedById, createdAt])
+}
+
+model Role {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  permissions RolePermission[]
+  employees   Employee[]
+}
+
+model Permission {
+  id          String           @id @default(cuid())
+  name        String           @unique
+  description String?
+  roles       RolePermission[]
+}
+
+model RolePermission {
+  roleId       String
+  permissionId String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
 }

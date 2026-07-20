@@ -9,8 +9,8 @@ describe("session tokens", () => {
         email: "owner@example.com",
         employeeId: "employee-1",
         exp: 1_783_334_400,
-        isHr: false,
-        isOwner: true
+        roleName: "owner",
+        permissions: ["enrollment", "reports"]
       },
       "test-session-secret"
     );
@@ -20,8 +20,8 @@ describe("session tokens", () => {
     ).toEqual({
       email: "owner@example.com",
       employeeId: "employee-1",
-      isHr: false,
-      isOwner: true
+      roleName: "owner",
+      permissions: ["enrollment", "reports"]
     });
   });
 
@@ -31,8 +31,8 @@ describe("session tokens", () => {
         email: "owner@example.com",
         employeeId: "employee-1",
         exp: 1_783_334_400,
-        isHr: false,
-        isOwner: true
+        roleName: "owner",
+        permissions: ["enrollment", "reports"]
       },
       "test-session-secret"
     );
@@ -52,8 +52,8 @@ describe("session tokens", () => {
         email: "owner@example.com",
         employeeId: "employee-1",
         exp: 1_783_334_400,
-        isHr: false,
-        isOwner: true
+        roleName: "owner",
+        permissions: ["enrollment", "reports"]
       },
       "test-session-secret"
     );
