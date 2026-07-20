@@ -11,7 +11,7 @@ void loop()
     // Check for heartbeat timing
     if (timeForHeartbeat())
     {
-        sendHeartbeat(SERVER_URL, DEVICE_ID, FIRMWARE_VERSION, getMode());
+        sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, getMode());
     }
 
     // Check scanner (returns immediately - non-blocking)
@@ -20,7 +20,7 @@ void loop()
     // Only send to server if we got a successful scan
     if (result.success)
     {
-        sendScan(SERVER_URL, DEVICE_ID, FIRMWARE_VERSION, result);
+        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, result);
         // Optionally reset sequence per user/session
         // resetScanSequence();
     }

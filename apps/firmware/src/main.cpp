@@ -38,6 +38,11 @@ void setup()
 
 void loop()
 {
+    if (timeForHeartbeat())
+    {
+        sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, getMode());
+    }
+
     const ScanResult result = scanFingerprint();
 
     if (result.success)
@@ -45,6 +50,7 @@ void loop()
         Serial.printf("MATCH: template ID %u, confidence %u\n",
                       static_cast<unsigned>(result.scannerTemplateId),
                       static_cast<unsigned>(result.matchConfidence));
+        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, result);
     }
     else if (!result.errorMessage.isEmpty())
     {

@@ -86,6 +86,11 @@ void pingServer(const char *url)
     http.end();
 }
 
+bool timeForHeartbeat()
+{
+    return (millis() - lastHeartbeatTime >= HEARTBEAT_INTERVAL);
+}
+
 void sendHeartbeat(
     const char *url,
     const char *deviceId,
@@ -93,12 +98,6 @@ void sendHeartbeat(
     ScannerMode mode)
 {
     if (!isConnected())
-    {
-        return;
-    }
-
-    // Only send heartbeat every HEARTBEAT_INTERVAL ms
-    if (millis() - lastHeartbeatTime < HEARTBEAT_INTERVAL)
     {
         return;
     }
@@ -167,11 +166,10 @@ void sendScan(
         return;
     }
 
-    if (!scanResult.success)
-    {
-        Serial.println("Scan unsuccessful. Not sending to server.");
-        return;
-    }
+    Serial.println("Sending scan result to server...");
+    Serial.printf("Template ID: %u, Confidence: %f\n",
+                  static_cast<unsigned>(scanResult.scannerTemplateId),
+                  scanResult.matchConfidence);
 
     HTTPClient http;
 
@@ -205,13 +203,13 @@ void sendScan(
 
     if (statusCode == 202 || statusCode == 201)
     {
-        Serial.println("Scan sent successfully.");
+        Serial.println("Scan sent to the server successfully.");
         Serial.print("Response code: ");
         Serial.println(statusCode);
     }
     else
     {
-        Serial.print("Scan failed. Status: ");
+        Serial.print("Failed to send scan to server. Status: ");
         Serial.println(statusCode);
         String response = http.getString();
         Serial.println("Response: " + response);
