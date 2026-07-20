@@ -56,6 +56,11 @@ export function createApp() {
         return;
       }
 
+      console.error("Unhandled error:", error);
+      if (error instanceof Error) {
+        console.error(error.stack);
+      }
+
       res.status(500).json({ error: "internal_server_error" });
     }
   );
