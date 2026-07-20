@@ -17,16 +17,18 @@ struct ScanResult
     String errorMessage;
 };
 
-// GPIO pins for fingerprint scanner UART
-#define SCANNER_RX_PIN 17
-#define SCANNER_TX_PIN 16
-#define SCANNER_BAUD_RATE 57600
+// These are ESP32 pin roles, not scanner pin labels:
+// scanner TX -> ESP32 RX (GPIO16)
+// scanner RX -> ESP32 TX (GPIO17)
+constexpr int ESP_RX_PIN = 16;
+constexpr int ESP_TX_PIN = 17;
+constexpr uint32_t SCANNER_BAUD_RATE = 57600;
 
 void initializeScanner();
 
 ScannerMode getMode();
 
-// Non-blocking scan function - call repeatedly in main loop
+// Poll once for a finger and search the templates stored in the sensor.
 ScanResult scanFingerprint();
 
 // Check if a scan is currently in progress

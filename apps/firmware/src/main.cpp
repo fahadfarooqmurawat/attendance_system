@@ -1,53 +1,32 @@
 #include <Arduino.h>
-#include <HTTPClient.h>
-#include <WiFi.h>
-#include "wifi_manager.h"
-#include "server_module.h"
 #include "scanner_module.h"
-#include "network_time.h"
-
-#if __has_include("config.h")
-#include "config.h"
-#else
-#include "config.example.h"
-#endif
 
 void setup()
 {
     Serial.begin(115200);
     delay(1000);
 
-    Serial.println("Attendance firmware scaffold");
-    Serial.print("Device ID: ");
-    Serial.println(DEVICE_ID);
-
-    if (connectWifi(WIFI_SSID, WIFI_PASSWORD) == WifiStatus::FAILED)
-    {
-        Serial.println("Main: Could not connect to WiFi.");
-
-        // Handle startup failure here.
-        return;
-    }
-
-    setupNetworkTime();
+    Serial.println();
+    Serial.println("Minimal ESP32 fingerprint scanner test");
     initializeScanner();
-    // pingServer(GATEWAY_BASE_URL);
+    Serial.println("Place an enrolled finger on the sensor.");
 }
 
 void loop()
 {
-    maintainConnection();
+    const ScanResult result = scanFingerprint();
 
-    ScannerMode mode = getMode();
-
-    sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, mode);
-
-    ScanResult scanResult = scanFingerprint();
-
-    if (scanResult.success)
+    if (result.success)
     {
-        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, scanResult);
+        Serial.printf("MATCH: template ID %u, confidence %u\n",
+                      static_cast<unsigned>(result.scannerTemplateId),
+                      static_cast<unsigned>(result.matchConfidence));
+    }
+    else if (!result.errorMessage.isEmpty())
+    {
+        Serial.print("SCAN: ");
+        Serial.println(result.errorMessage);
     }
 
-    delay(50);
+    delay(250);
 }

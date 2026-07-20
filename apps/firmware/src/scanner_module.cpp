@@ -4,8 +4,7 @@
 
 namespace
 {
-    ScannerMode currentMode = ScannerMode::SCAN;
-    HardwareSerial scannerSerial(2); // UART2 for the fingerprint scanner
+    HardwareSerial scannerSerial(2);
     Adafruit_Fingerprint finger(&scannerSerial);
     bool sensorAvailable = false;
     uint32_t scanSequence = 0;
@@ -13,30 +12,42 @@ namespace
 
 void initializeScanner()
 {
-    // Initialize UART for fingerprint scanner
-    scannerSerial.begin(SCANNER_BAUD_RATE, SERIAL_8N1, SCANNER_RX_PIN, SCANNER_TX_PIN);
-    Serial.printf("Scanner module initialized on GPIO%u (RX) and GPIO%u (TX)\n", SCANNER_RX_PIN, SCANNER_TX_PIN);
+    Serial.printf("UART2: RX=GPIO%d, TX=GPIO%d, baud=%lu\n",
+                  ESP_RX_PIN,
+                  ESP_TX_PIN,
+                  static_cast<unsigned long>(SCANNER_BAUD_RATE));
+    Serial.println("Wiring: scanner TX -> GPIO16, scanner RX -> GPIO17, and common GND");
 
-    // Initialize Adafruit fingerprint wrapper
+    scannerSerial.begin(
+        SCANNER_BAUD_RATE,
+        SERIAL_8N1,
+        ESP_RX_PIN,
+        ESP_TX_PIN);
     finger.begin(SCANNER_BAUD_RATE);
-    delay(100);
-    if (finger.verifyPassword())
+
+    if (!finger.verifyPassword())
     {
-        sensorAvailable = true;
-        finger.getTemplateCount();
-        Serial.print("Sensor ready. Templates: ");
-        Serial.println(finger.templateCount);
+        Serial.println("ERROR: no response from sensor (check RX/TX direction, baud, power, and GND)");
+        return;
+    }
+
+    sensorAvailable = true;
+    Serial.println("Sensor connection OK");
+
+    const uint8_t status = finger.getTemplateCount();
+    if (status == FINGERPRINT_OK)
+    {
+        Serial.printf("Stored templates: %u\n", static_cast<unsigned>(finger.templateCount));
     }
     else
     {
-        sensorAvailable = false;
-        Serial.println("Sensor not found or wrong password.");
+        Serial.printf("Could not read template count (code 0x%02X)\n", status);
     }
 }
 
 ScannerMode getMode()
 {
-    return currentMode;
+    return ScannerMode::SCAN;
 }
 
 ScanResult scanFingerprint()
@@ -49,44 +60,40 @@ ScanResult scanFingerprint()
         return result;
     }
 
-    uint8_t p = finger.getImage();
-
-    if (p != FINGERPRINT_OK)
+    uint8_t status = finger.getImage();
+    if (status == FINGERPRINT_NOFINGER)
     {
-        if (p == FINGERPRINT_NOFINGER)
-        {
-            // No finger present
-            return result;
-        }
-        result.errorMessage = "Imaging error";
+        return result;
+    }
+    if (status != FINGERPRINT_OK)
+    {
+        result.errorMessage = "getImage failed (code 0x" + String(status, HEX) + ")";
         return result;
     }
 
-    if (finger.image2Tz(1) != FINGERPRINT_OK)
+    status = finger.image2Tz();
+    if (status != FINGERPRINT_OK)
     {
-        result.errorMessage = "Convert failed";
+        result.errorMessage = "image2Tz failed (code 0x" + String(status, HEX) + ")";
         return result;
     }
 
-    if (finger.fingerSearch() != FINGERPRINT_OK)
+    status = finger.fingerSearch();
+    if (status == FINGERPRINT_NOTFOUND)
     {
-        result.success = false;
-        result.errorMessage = "No match";
-        Serial.println("No match — ACCESS DENIED");
+        result.errorMessage = "finger read successfully, but no enrolled template matched";
         return result;
     }
-
-    uint16_t id = finger.fingerID;
-    uint16_t confidence = finger.confidence;
+    if (status != FINGERPRINT_OK)
+    {
+        result.errorMessage = "fingerSearch failed (code 0x" + String(status, HEX) + ")";
+        return result;
+    }
 
     result.success = true;
-    result.scannerTemplateId = id;
-    result.matchConfidence = (float)confidence / 65535.0f;
+    result.scannerTemplateId = finger.fingerID;
+    result.matchConfidence = static_cast<float>(finger.confidence);
     scanSequence++;
-
-    Serial.printf("Scan successful - Template ID: %u, Confidence: %.2f, Sequence: %u\n",
-                  (unsigned)id, (double)result.matchConfidence, (unsigned)scanSequence);
-
     return result;
 }
 
@@ -102,6 +109,5 @@ void resetScanSequence()
 
 bool isScanInProgress()
 {
-    // With blocking Adafruit calls we don't track an in-progress flag here.
     return false;
 }
