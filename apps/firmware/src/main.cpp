@@ -1,5 +1,16 @@
 #include <Arduino.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include "wifi_manager.h"
+#include "server_module.h"
 #include "scanner_module.h"
+#include "network_time.h"
+
+#if __has_include("config.h")
+#include "config.h"
+#else
+#include "config.example.h"
+#endif
 
 void setup()
 {
@@ -7,8 +18,21 @@ void setup()
     delay(1000);
 
     Serial.println();
-    Serial.println("Minimal ESP32 fingerprint scanner test");
+    Serial.printf("Attendance firmware version: %s\n", FIRMWARE_VERSION);
+    Serial.printf("Device ID: %s\n", DEVICE_ID);
+
     initializeScanner();
+
+    if (connectWifi(WIFI_SSID, WIFI_PASSWORD) == WifiStatus::FAILED)
+    {
+        Serial.println("Main: Could not connect to WiFi.");
+
+        // Handle startup failure here.
+        return;
+    }
+
+    setupNetworkTime();
+
     Serial.println("Place an enrolled finger on the sensor.");
 }
 
