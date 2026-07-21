@@ -110,7 +110,7 @@ pnpm docker:down
 | `pnpm db:studio`            | Open Prisma Studio.                                           |
 | `pnpm lint`                 | Run ESLint through Turbo.                                     |
 | `pnpm typecheck`            | Run TypeScript checks through Turbo.                          |
-| `pnpm test`                 | Run Vitest through Turbo.                                     |
+| `pnpm test`                 | Run all TypeScript tests and generate coverage.               |
 | `pnpm build`                | Build all packages/apps.                                      |
 | `pnpm format`               | Format the repo with Prettier.                                |
 | `pnpm firmware:build`       | Build the ESP32 firmware.                                     |
@@ -128,6 +128,11 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+`pnpm test` prints a consolidated coverage summary and writes the browsable HTML report to
+`coverage/index.html`. The command fails if coverage drops below the thresholds in
+`vitest.config.ts`. Firmware logic tests use PlatformIO and remain available through
+`pnpm firmware:test`; V8 coverage cannot instrument ESP32 C++.
 
 For firmware changes, also run:
 
