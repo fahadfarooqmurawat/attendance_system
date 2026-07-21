@@ -6,6 +6,7 @@
 #include "wifi_manager.h"
 #include "scanner_module.h"
 #include "device_signature.h"
+#include "firmware_logic.h"
 #include "network_time.h"
 #if __has_include("config.h")
 #include "config.h"
@@ -47,7 +48,7 @@ void pingServer(const char *url)
     }
 
     // Ping only once every 5 seconds
-    if (millis() - lastPingTime < SERVER_PING_TIMEOUT)
+    if (!hasIntervalElapsed(millis(), lastPingTime, SERVER_PING_TIMEOUT))
     {
         return;
     }
@@ -88,7 +89,7 @@ void pingServer(const char *url)
 
 bool timeForHeartbeat()
 {
-    return (millis() - lastHeartbeatTime >= HEARTBEAT_INTERVAL);
+    return hasIntervalElapsed(millis(), lastHeartbeatTime, HEARTBEAT_INTERVAL);
 }
 
 void sendHeartbeat(
@@ -117,7 +118,7 @@ void sendHeartbeat(
 
     doc["deviceId"] = deviceId;
     doc["firmwareVersion"] = firmwareVersion;
-    doc["reportedMode"] = (mode == ScannerMode::SCAN) ? "SCAN" : "ENROLL";
+    doc["reportedMode"] = scannerModeWireValue(mode);
 
     String requestBody;
     serializeJson(doc, requestBody);
@@ -134,7 +135,7 @@ void sendHeartbeat(
 
     int statusCode = http.POST(requestBody);
 
-    if (statusCode >= 200 && statusCode < 300)
+    if (isSuccessfulHttpStatus(statusCode))
     {
         Serial.print("Heartbeat sent. Status: ");
         Serial.println(statusCode);
@@ -201,7 +202,7 @@ void sendScan(
 
     int statusCode = http.POST(requestBody);
 
-    if (statusCode == 202 || statusCode == 201)
+    if (isAcceptedScanStatus(statusCode))
     {
         Serial.println("Scan sent to the server successfully.");
         Serial.print("Response code: ");
