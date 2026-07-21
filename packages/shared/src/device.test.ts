@@ -3,7 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   deviceEnrollmentResultSchema,
   deviceHeartbeatResponseSchema,
-  deviceHeartbeatSchema
+  deviceHeartbeatSchema,
+  deviceScanSchema
 } from "./device.js";
 
 describe("device heartbeat protocol", () => {
@@ -32,6 +33,47 @@ describe("device heartbeat protocol", () => {
       }).enrollment?.sessionId
     ).toBe("session-1");
   });
+
+  it("rejects an unsupported reported mode", () => {
+    expect(() =>
+      deviceHeartbeatSchema.parse({ deviceId: "device-1", reportedMode: "MAINTENANCE" })
+    ).toThrow();
+  });
+
+  it("rejects malformed response timestamps", () => {
+    expect(() =>
+      deviceHeartbeatResponseSchema.parse({
+        accepted: true,
+        cancelEnrollmentSessionId: null,
+        desiredMode: "SCAN",
+        deviceId: "device-1",
+        enrollment: null,
+        lastSeenAt: "yesterday"
+      })
+    ).toThrow();
+  });
+});
+
+describe("device scan protocol", () => {
+  it("accepts boundary confidence values", () => {
+    expect(
+      deviceScanSchema.parse({
+        deviceId: "device-1",
+        deviceScanSequence: 0,
+        matchConfidence: 1,
+        scannerTemplateId: 0
+      })
+    ).toMatchObject({ deviceScanSequence: 0, matchConfidence: 1, scannerTemplateId: 0 });
+  });
+
+  it.each([
+    { matchConfidence: -0.01, scannerTemplateId: 1 },
+    { matchConfidence: 1.01, scannerTemplateId: 1 },
+    { matchConfidence: 0.5, scannerTemplateId: -1 },
+    { matchConfidence: 0.5, scannerTemplateId: 1.5 }
+  ])("rejects invalid scan values %#", (values) => {
+    expect(() => deviceScanSchema.parse({ deviceId: "device-1", ...values })).toThrow();
+  });
 });
 
 describe("device enrollment result protocol", () => {
@@ -54,5 +96,25 @@ describe("device enrollment result protocol", () => {
         status: "FAILED"
       }).status
     ).toBe("FAILED");
+  });
+
+  it("allows a cancellation without a message", () => {
+    expect(
+      deviceEnrollmentResultSchema.parse({
+        deviceId: "device-1",
+        enrollmentSessionId: "session-1",
+        status: "CANCELLED"
+      })
+    ).toMatchObject({ status: "CANCELLED" });
+  });
+
+  it("requires a failure message", () => {
+    expect(() =>
+      deviceEnrollmentResultSchema.parse({
+        deviceId: "device-1",
+        enrollmentSessionId: "session-1",
+        status: "FAILED"
+      })
+    ).toThrow();
   });
 });

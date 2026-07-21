@@ -10,21 +10,28 @@ Copy config
 cp include/config.example.h include/config.h
 ```
 
-Build, Upload and Monitor locally
+Build, test, upload, and monitor locally
 
 ```bash
 pio run
+pio test -e native
 pio run -t upload
 pio device monitor
 ```
 
-Build, Upload and Monitor from root directory
+Build, test, upload, and monitor from root directory
 
 ```bash
 pnpm firmware:build
+pnpm firmware:test
+pnpm firmware:test:device
 pnpm firmware:upload
 pnpm firmware:monitor
 ```
+
+`firmware:test` runs deterministic logic tests on the development machine and does not
+require an ESP32. `firmware:test:device` runs the embedded smoke suite and requires a
+connected board.
 
 In VS Code, install the recommended PlatformIO and C/C++ extensions, then generate the
 compilation database used by IntelliSense:

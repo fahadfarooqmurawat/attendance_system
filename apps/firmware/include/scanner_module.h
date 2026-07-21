@@ -2,12 +2,7 @@
 #define SCANNER_MODULE_H
 
 #include <Arduino.h>
-
-enum class ScannerMode
-{
-    SCAN,
-    ENROLL
-};
+#include "firmware_logic.h"
 
 enum class EnrollmentStatus // chatgpt
 {
