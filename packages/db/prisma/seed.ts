@@ -58,16 +58,16 @@ async function main() {
       await tx.permission.upsert({ create: { name: p }, update: {}, where: { name: p } });
     }
 
-    const roles: Record<string, any> = {};
+    const roles: Record<string, { id: string }> = {};
     for (const r of rolesData) {
       roles[r.name] = await tx.role.upsert({ create: { name: r.name }, update: {}, where: { name: r.name } });
       for (const p of r.perms) {
         const perm = await tx.permission.findUnique({ where: { name: p } });
         if (perm) {
           await tx.rolePermission.upsert({
-            create: { roleId: roles[r.name].id, permissionId: perm.id },
+            create: { roleId: roles[r.name]!.id, permissionId: perm.id },
             update: {},
-            where: { roleId_permissionId: { roleId: roles[r.name].id, permissionId: perm.id } }
+            where: { roleId_permissionId: { roleId: roles[r.name]!.id, permissionId: perm.id } }
           });
         }
       }
@@ -80,18 +80,18 @@ async function main() {
       create: {
         email: "owner@test.com",
         fullName: "Company Owner",
-        roleId: roles["owner"].id,
+        roleId: roles["owner"]!.id,
         passwordHash: defaultPasswordHash
       },
       update: {},
       where: { email: "owner@test.com" }
     });
 
-    const hr = await tx.employee.upsert({
+    await tx.employee.upsert({
       create: {
         email: "hr@test.com",
         fullName: "HR Manager",
-        roleId: roles["hr"].id,
+        roleId: roles["hr"]!.id,
         managerId: owner.id,
         passwordHash: defaultPasswordHash
       },
@@ -103,7 +103,7 @@ async function main() {
       create: {
         email: "manager@test.com",
         fullName: "Team Manager",
-        roleId: roles["manager"].id,
+        roleId: roles["manager"]!.id,
         managerId: owner.id,
         passwordHash: defaultPasswordHash
       },
@@ -115,7 +115,7 @@ async function main() {
       create: {
         email: "employee@test.com",
         fullName: "Regular Employee",
-        roleId: roles["employee"].id,
+        roleId: roles["employee"]!.id,
         managerId: manager.id,
         passwordHash: defaultPasswordHash
       },

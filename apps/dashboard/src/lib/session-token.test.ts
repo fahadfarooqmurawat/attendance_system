@@ -7,6 +7,7 @@ describe("session tokens", () => {
     const token = signSessionToken(
       {
         email: "owner@example.com",
+        fullName: "Test Owner",
         employeeId: "employee-1",
         exp: 1_783_334_400,
         roleName: "owner",
@@ -19,6 +20,7 @@ describe("session tokens", () => {
       verifySessionToken(token, "test-session-secret", new Date("2026-07-06T10:00:00Z"))
     ).toEqual({
       email: "owner@example.com",
+      fullName: "Test Owner",
       employeeId: "employee-1",
       roleName: "owner",
       permissions: ["enrollment", "reports"]
@@ -29,6 +31,7 @@ describe("session tokens", () => {
     const token = signSessionToken(
       {
         email: "owner@example.com",
+        fullName: "Test Owner",
         employeeId: "employee-1",
         exp: 1_783_334_400,
         roleName: "owner",
@@ -50,6 +53,7 @@ describe("session tokens", () => {
     const token = signSessionToken(
       {
         email: "owner@example.com",
+        fullName: "Test Owner",
         employeeId: "employee-1",
         exp: 1_783_334_400,
         roleName: "owner",

@@ -8,7 +8,7 @@ import { signSessionToken } from "../../lib/session-token";
 
 const db = createPrismaClient(process.env.DATABASE_URL as string);
 
-export async function login(prevState: any, formData: FormData) {
+export async function login(prevState: unknown, formData: FormData) {
   const email = formData.get("email") as string;
   const password = formData.get("password") as string;
 
@@ -41,7 +41,7 @@ export async function login(prevState: any, formData: FormData) {
 
   // Create JWT payload
   const roleName = employee.role?.name || "employee";
-  const permissions = employee.role?.permissions.map((rp: any) => rp.permission.name) || [];
+  const permissions = employee.role?.permissions.map((rp: { permission: { name: string } }) => rp.permission.name) || [];
 
   const tokenPayload = {
     employeeId: employee.id,
