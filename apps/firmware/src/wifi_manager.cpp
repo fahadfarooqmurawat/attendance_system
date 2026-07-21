@@ -1,5 +1,5 @@
 #include "wifi_manager.h"
-
+#include "firmware_logic.h"
 
 constexpr int MAX_RETRIES = 3;
 constexpr unsigned long CONNECTION_TIMEOUT = 10000;
@@ -59,7 +59,7 @@ void maintainConnection()
     if (WiFi.status() == WL_CONNECTED)
         return;
 
-    if (millis() - lastReconnectAttempt < RECONNECT_INTERVAL)
+    if (!hasIntervalElapsed(millis(), lastReconnectAttempt, RECONNECT_INTERVAL))
         return;
 
     lastReconnectAttempt = millis();

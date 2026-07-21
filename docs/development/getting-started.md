@@ -94,30 +94,31 @@ pnpm docker:down
 
 ## Common Commands
 
-| Command                   | Purpose                                                       |
-| ------------------------- | ------------------------------------------------------------- |
-| `pnpm dev`                | Run all TypeScript apps locally in watch mode.                |
-| `pnpm dev:dashboard`      | Run only the dashboard.                                       |
-| `pnpm dev:device-gateway` | Run only the device gateway.                                  |
-| `pnpm dev:worker`         | Run only the worker.                                          |
-| `pnpm docker:db:up`       | Start only PostgreSQL in Docker.                              |
-| `pnpm docker:up`          | Start PostgreSQL and all app services in Docker.              |
-| `pnpm docker:logs`        | Follow Docker logs.                                           |
-| `pnpm docker:down`        | Stop the local Docker stack.                                  |
-| `pnpm db:migrate`         | Create/apply local Prisma migrations.                         |
-| `pnpm db:migrate:deploy`  | Apply committed migrations in production/shared environments. |
-| `pnpm db:seed`            | Seed development-only data.                                   |
-| `pnpm db:studio`          | Open Prisma Studio.                                           |
-| `pnpm lint`               | Run ESLint through Turbo.                                     |
-| `pnpm typecheck`          | Run TypeScript checks through Turbo.                          |
-| `pnpm test`               | Run Vitest through Turbo.                                     |
-| `pnpm build`              | Build all packages/apps.                                      |
-| `pnpm format`             | Format the repo with Prettier.                                |
-| `pnpm firmware:build`     | Build the ESP32 firmware.                                     |
-| `pnpm firmware:test`      | Run firmware tests on a connected ESP32.                      |
-| `pnpm firmware:upload`    | Build and upload firmware to a connected ESP32.               |
-| `pnpm firmware:monitor`   | Monitor serial output from a connected ESP32.                 |
-| `pnpm firmware:clean`     | Remove PlatformIO firmware build artifacts.                   |
+| Command                     | Purpose                                                       |
+| --------------------------- | ------------------------------------------------------------- |
+| `pnpm dev`                  | Run all TypeScript apps locally in watch mode.                |
+| `pnpm dev:dashboard`        | Run only the dashboard.                                       |
+| `pnpm dev:device-gateway`   | Run only the device gateway.                                  |
+| `pnpm dev:worker`           | Run only the worker.                                          |
+| `pnpm docker:db:up`         | Start only PostgreSQL in Docker.                              |
+| `pnpm docker:up`            | Start PostgreSQL and all app services in Docker.              |
+| `pnpm docker:logs`          | Follow Docker logs.                                           |
+| `pnpm docker:down`          | Stop the local Docker stack.                                  |
+| `pnpm db:migrate`           | Create/apply local Prisma migrations.                         |
+| `pnpm db:migrate:deploy`    | Apply committed migrations in production/shared environments. |
+| `pnpm db:seed`              | Seed development-only data.                                   |
+| `pnpm db:studio`            | Open Prisma Studio.                                           |
+| `pnpm lint`                 | Run ESLint through Turbo.                                     |
+| `pnpm typecheck`            | Run TypeScript checks through Turbo.                          |
+| `pnpm test`                 | Run all TypeScript tests and generate coverage.               |
+| `pnpm build`                | Build all packages/apps.                                      |
+| `pnpm format`               | Format the repo with Prettier.                                |
+| `pnpm firmware:build`       | Build the ESP32 firmware.                                     |
+| `pnpm firmware:test`        | Run firmware logic tests on the development machine.          |
+| `pnpm firmware:test:device` | Run firmware smoke tests on a connected ESP32.                |
+| `pnpm firmware:upload`      | Build and upload firmware to a connected ESP32.               |
+| `pnpm firmware:monitor`     | Monitor serial output from a connected ESP32.                 |
+| `pnpm firmware:clean`       | Remove PlatformIO firmware build artifacts.                   |
 
 Before opening a pull request, run:
 
@@ -127,6 +128,11 @@ pnpm typecheck
 pnpm test
 pnpm build
 ```
+
+`pnpm test` prints a consolidated coverage summary and writes the browsable HTML report to
+`coverage/index.html`. The command fails if coverage drops below the thresholds in
+`vitest.config.ts`. Firmware logic tests use PlatformIO and remain available through
+`pnpm firmware:test`; V8 coverage cannot instrument ESP32 C++.
 
 For firmware changes, also run:
 
@@ -307,10 +313,16 @@ Build firmware:
 pnpm firmware:build
 ```
 
-Run firmware tests on a connected ESP32:
+Run firmware logic tests without a connected ESP32:
 
 ```bash
 pnpm firmware:test
+```
+
+Run the embedded smoke tests on a connected ESP32:
+
+```bash
+pnpm firmware:test:device
 ```
 
 Upload firmware to a connected ESP32:

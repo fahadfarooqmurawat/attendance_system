@@ -6,6 +6,7 @@
 #include "wifi_manager.h"
 #include "scanner_module.h"
 #include "device_signature.h"
+#include "firmware_logic.h"
 #include "network_time.h"
 #if __has_include("config.h")
 #include "config.h"
@@ -21,8 +22,10 @@ namespace
     bool serverConnected = false;
 
     unsigned long lastPingTime = 0;
+    unsigned long lastHeartbeatTime = 0;
 
-    constexpr unsigned long PING_INTERVAL = 5000;
+    // constexpr unsigned long PING_INTERVAL = 5000;
+    // constexpr unsigned long HEARTBEAT_INTERVAL = 5000;
 }
 
 // void initializeServer(const char* url)
@@ -45,7 +48,7 @@ void pingServer(const char *url)
     }
 
     // Ping only once every 5 seconds
-    if (millis() - lastPingTime < PING_INTERVAL)
+    if (!hasIntervalElapsed(millis(), lastPingTime, SERVER_PING_TIMEOUT))
     {
         return;
     }
@@ -84,6 +87,11 @@ void pingServer(const char *url)
     http.end();
 }
 
+bool timeForHeartbeat()
+{
+    return hasIntervalElapsed(millis(), lastHeartbeatTime, HEARTBEAT_INTERVAL);
+}
+
 void sendHeartbeat(
     const char *url,
     const char *deviceId,
@@ -94,6 +102,8 @@ void sendHeartbeat(
     {
         return;
     }
+
+    lastHeartbeatTime = millis();
 
     HTTPClient http;
 
@@ -108,10 +118,12 @@ void sendHeartbeat(
 
     doc["deviceId"] = deviceId;
     doc["firmwareVersion"] = firmwareVersion;
-    doc["mode"] = (mode == ScannerMode::SCAN) ? "SCAN" : "ENROLL";
+    doc["reportedMode"] = scannerModeWireValue(mode);
 
     String requestBody;
     serializeJson(doc, requestBody);
+
+    Serial.println("Sending heartbeat: " + requestBody);
 
     // Build signature headers using the device secret and current timestamp
     String timestamp = getTimestamp();
@@ -123,14 +135,85 @@ void sendHeartbeat(
 
     int statusCode = http.POST(requestBody);
 
-    if (statusCode == 202)
+    if (isSuccessfulHttpStatus(statusCode))
     {
-        Serial.println("Heartbeat sent.");
+        Serial.print("Heartbeat sent. Status: ");
+        Serial.println(statusCode);
     }
     else
     {
         Serial.print("Heartbeat failed. Status: ");
         Serial.println(statusCode);
+        String response = http.getString();
+        if (response.length() > 0)
+        {
+            Serial.print("Response: ");
+            Serial.println(response);
+        }
+    }
+
+    http.end();
+}
+
+void sendScan(
+    const char *url,
+    const char *deviceId,
+    const char *firmwareVersion,
+    const ScanResult &scanResult)
+{
+    if (!isConnected())
+    {
+        Serial.println("WiFi not connected. Cannot send scan.");
+        return;
+    }
+
+    Serial.println("Sending scan result to server...");
+    Serial.printf("Template ID: %u, Confidence: %f\n",
+                  static_cast<unsigned>(scanResult.scannerTemplateId),
+                  scanResult.matchConfidence);
+
+    HTTPClient http;
+
+    String endpoint = String(url) + "/device/scans";
+
+    http.begin(endpoint);
+
+    http.addHeader("Content-Type", "application/json");
+
+    // Create JSON payload matching deviceScanSchema
+    DynamicJsonDocument doc(512);
+
+    doc["deviceId"] = deviceId;
+    doc["scannerTemplateId"] = scanResult.scannerTemplateId;
+    doc["deviceScanSequence"] = getScanSequence();
+    doc["firmwareVersion"] = firmwareVersion;
+    doc["matchConfidence"] = (double)scanResult.matchConfidence; // Ensure it's 0-1 range
+
+    String requestBody;
+    serializeJson(doc, requestBody);
+
+    // Build signature headers using the device secret and current timestamp
+    String timestamp = getTimestamp();
+    String signature = createDeviceSignature("POST", "/device/scans", requestBody, DEVICE_SECRET, timestamp);
+
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-device-timestamp", timestamp);
+    http.addHeader("x-device-signature", signature);
+
+    int statusCode = http.POST(requestBody);
+
+    if (isAcceptedScanStatus(statusCode))
+    {
+        Serial.println("Scan sent to the server successfully.");
+        Serial.print("Response code: ");
+        Serial.println(statusCode);
+    }
+    else
+    {
+        Serial.print("Failed to send scan to server. Status: ");
+        Serial.println(statusCode);
+        String response = http.getString();
+        Serial.println("Response: " + response);
     }
 
     http.end();
