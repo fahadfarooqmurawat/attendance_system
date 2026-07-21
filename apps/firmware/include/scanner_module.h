@@ -4,11 +4,32 @@
 #include <Arduino.h>
 #include "firmware_logic.h"
 
+enum class EnrollmentStatus // chatgpt
+{
+    IDLE,
+    IN_PROGRESS,
+    SUCCESS,
+    FAILED
+};
+
 struct ScanResult
 {
     bool success;
     uint16_t scannerTemplateId;
     float matchConfidence;
+    String errorMessage;
+};
+
+struct EnrollmentResult // chatgpt
+{
+    EnrollmentStatus status;
+
+    bool success;
+
+    String enrollmentSessionId;
+
+    uint16_t scannerTemplateId;
+
     String errorMessage;
 };
 
@@ -34,5 +55,22 @@ uint32_t getScanSequence();
 
 // Reset scan sequence counter
 void resetScanSequence();
+
+void setMode(ScannerMode mode); // chatgpt
+
+EnrollmentResult enrollFingerprint(uint16_t templateId); // chatgpt
+
+bool isEnrollmentRunning(); // chatgpt
+
+// Enrollment control, chatgpt
+void startEnrollment(
+    const String &sessionId,
+    uint16_t templateId);
+
+void cancelEnrollment(); // chatgpt
+
+String getEnrollmentSessionId(); // chatgpt
+
+uint16_t getEnrollmentTemplateId(); // chatgpt
 
 #endif
