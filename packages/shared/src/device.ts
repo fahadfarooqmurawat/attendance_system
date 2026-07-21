@@ -18,7 +18,8 @@ export const deviceHeartbeatResponseSchema = z.object({
   enrollment: z
     .object({
       expiresAt: z.iso.datetime(),
-      sessionId: z.string().min(1)
+      sessionId: z.string().min(1),
+      templateId: z.number().int().nonnegative() //chatgpt
     })
     .nullable(),
   lastSeenAt: z.iso.datetime()

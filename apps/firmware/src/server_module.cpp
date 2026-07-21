@@ -95,9 +95,14 @@ void sendHeartbeat(
     const char *url,
     const char *deviceId,
     const char *firmwareVersion,
-    ScannerMode mode)
+    ScannerMode currentMode)
 {
     if (!isConnected())
+    {
+        return;
+    }
+
+    if (millis() - lastHeartbeatTime < HEARTBEAT_INTERVAL)
     {
         return;
     }
@@ -112,21 +117,35 @@ void sendHeartbeat(
 
     http.addHeader("Content-Type", "application/json");
 
-    // Use a dynamic JSON document with a small capacity
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument requestDoc(256);
 
-    doc["deviceId"] = deviceId;
-    doc["firmwareVersion"] = firmwareVersion;
-    doc["reportedMode"] = (mode == ScannerMode::SCAN) ? "SCAN" : "ENROLL";
+    requestDoc["deviceId"] = deviceId;
+    requestDoc["firmwareVersion"] = firmwareVersion;
+
+    requestDoc["reportedMode"] =
+        (currentMode == ScannerMode::SCAN)
+            ? "SCAN"
+            : "ENROLL";
+
+    if (currentMode == ScannerMode::ENROLL)
+    {
+        requestDoc["activeEnrollmentSessionId"] =
+            getEnrollmentSessionId();
+    }
 
     String requestBody;
-    serializeJson(doc, requestBody);
 
-    Serial.println("Sending heartbeat: " + requestBody);
+    serializeJson(requestDoc, requestBody);
 
-    // Build signature headers using the device secret and current timestamp
     String timestamp = getTimestamp();
-    String signature = createDeviceSignature("POST", "/device/heartbeat", requestBody, DEVICE_SECRET, timestamp);
+
+    String signature =
+        createDeviceSignature(
+            "POST",
+            "/device/heartbeat",
+            requestBody,
+            DEVICE_SECRET,
+            timestamp);
 
     http.addHeader("x-device-id", deviceId);
     http.addHeader("x-device-timestamp", timestamp);
@@ -134,20 +153,69 @@ void sendHeartbeat(
 
     int statusCode = http.POST(requestBody);
 
-    if (statusCode >= 200 && statusCode < 300)
-    {
-        Serial.print("Heartbeat sent. Status: ");
-        Serial.println(statusCode);
-    }
-    else
+    if (statusCode != 200 && statusCode != 202)
     {
         Serial.print("Heartbeat failed. Status: ");
         Serial.println(statusCode);
+
         String response = http.getString();
+
         if (response.length() > 0)
         {
-            Serial.print("Response: ");
             Serial.println(response);
+        }
+
+        http.end();
+        return;
+    }
+
+    String response = http.getString();
+
+    Serial.println("Heartbeat Response:");
+    Serial.println(response);
+
+    DynamicJsonDocument responseDoc(1024);
+
+    DeserializationError error =
+        deserializeJson(responseDoc, response);
+
+    if (error)
+    {
+        Serial.println("Could not parse heartbeat response.");
+
+        http.end();
+
+        return;
+    }
+
+    if (responseDoc.containsKey("desiredMode"))
+    {
+        String desiredMode =
+            responseDoc["desiredMode"].as<String>();
+
+        if (desiredMode == "ENROLL")
+        {
+            if (responseDoc.containsKey("enrollment"))
+            {
+                JsonObject enrollment =
+                    responseDoc["enrollment"];
+
+                String sessionId =
+                    enrollment["sessionId"].as<String>();
+
+                uint16_t templateId =
+                    enrollment["templateId"];
+
+                startEnrollment(
+                    sessionId,
+                    templateId);
+
+                Serial.println("Enrollment requested by server.");
+            }
+        }
+        else
+        {
+            cancelEnrollment();
         }
     }
 
@@ -213,6 +281,89 @@ void sendScan(
         Serial.println(statusCode);
         String response = http.getString();
         Serial.println("Response: " + response);
+    }
+
+    http.end();
+}
+
+void sendEnrollmentResult(
+    const char *url,
+    const char *deviceId,
+    const char *firmwareVersion,
+    const EnrollmentResult &enrollmentResult)
+{
+    if (!isConnected())
+    {
+        Serial.println("WiFi not connected. Cannot send enrollment result.");
+        return;
+    }
+
+    HTTPClient http;
+
+    String endpoint = String(url) + "/device/enrollment-result";
+
+    http.begin(endpoint);
+
+    http.addHeader("Content-Type", "application/json");
+
+    DynamicJsonDocument doc(512);
+
+    doc["deviceId"] = deviceId;
+    doc["firmwareVersion"] = firmwareVersion;
+
+    doc["deviceId"] = deviceId;
+
+    doc["enrollmentSessionId"] =
+        getEnrollmentSessionId();
+
+    if (enrollmentResult.success)
+    {
+        doc["status"] = "SUCCEEDED";
+        doc["scannerTemplateId"] =
+            enrollmentResult.scannerTemplateId;
+    }
+    else
+    {
+        doc["status"] = "FAILED";
+        doc["message"] =
+            enrollmentResult.errorMessage;
+    }
+
+    String requestBody;
+
+    serializeJson(doc, requestBody);
+
+    String timestamp = getTimestamp();
+
+    String signature =
+        createDeviceSignature(
+            "POST",
+            "/device/enrollment-result",
+            requestBody,
+            DEVICE_SECRET,
+            timestamp);
+
+    http.addHeader("x-device-id", deviceId);
+    http.addHeader("x-device-timestamp", timestamp);
+    http.addHeader("x-device-signature", signature);
+
+    int statusCode = http.POST(requestBody);
+
+    if (statusCode == 200 || statusCode == 201 || statusCode == 202)
+    {
+        Serial.println("Enrollment result sent successfully.");
+    }
+    else
+    {
+        Serial.print("Failed to send enrollment result. Status: ");
+        Serial.println(statusCode);
+
+        String response = http.getString();
+
+        if (response.length() > 0)
+        {
+            Serial.println(response);
+        }
     }
 
     http.end();

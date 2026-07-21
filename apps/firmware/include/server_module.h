@@ -12,16 +12,29 @@ bool isServerConnected();
 
 bool timeForHeartbeat();
 
+// void sendHeartbeat(
+//     const char *url,
+//     const char *deviceId,
+//     const char *firmwareVersion,
+//     ScannerMode mode);
+
+// chatgpt
 void sendHeartbeat(
     const char *url,
     const char *deviceId,
     const char *firmwareVersion,
-    ScannerMode mode);
+    ScannerMode currentMode);
 
 void sendScan(
     const char *url,
     const char *deviceId,
     const char *firmwareVersion,
     const ScanResult &scanResult);
+
+void sendEnrollmentResult(
+    const char *url,
+    const char *deviceId,
+    const char *firmwareVersion,
+    const EnrollmentResult &enrollmentResult);
 
 #endif
