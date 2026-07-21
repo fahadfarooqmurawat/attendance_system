@@ -27,7 +27,8 @@ describe("device heartbeat protocol", () => {
         deviceId: "device-1",
         enrollment: {
           expiresAt: "2026-07-14T12:05:00.000Z",
-          sessionId: "session-1"
+          sessionId: "session-1",
+          templateId: 1
         },
         lastSeenAt: "2026-07-14T12:00:00.000Z"
       }).enrollment?.sessionId
