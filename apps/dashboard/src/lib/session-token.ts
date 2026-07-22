@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
-import type { SessionUser } from "./session.js";
+import type { SessionUser } from "./session";
 
 export type SessionPayload = SessionUser & {
   exp: number;
@@ -40,8 +40,9 @@ export function verifySessionToken(
   return {
     email: payload.email,
     employeeId: payload.employeeId,
-    isHr: payload.isHr,
-    isOwner: payload.isOwner
+    fullName: payload.fullName,
+    roleName: payload.roleName,
+    permissions: payload.permissions
   };
 }
 
@@ -58,8 +59,9 @@ function parsePayload(encodedPayload: string): SessionPayload | null {
       payload === null ||
       typeof payload.employeeId !== "string" ||
       typeof payload.email !== "string" ||
-      typeof payload.isHr !== "boolean" ||
-      typeof payload.isOwner !== "boolean" ||
+      typeof payload.fullName !== "string" ||
+      typeof payload.roleName !== "string" ||
+      !Array.isArray(payload.permissions) ||
       typeof payload.exp !== "number"
     ) {
       return null;

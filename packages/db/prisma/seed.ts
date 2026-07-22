@@ -5,6 +5,7 @@ import { loadEnvFile } from "node:process";
 import { fileURLToPath } from "node:url";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@prisma/client";
+import { hashSync } from "bcryptjs";
 
 const seedDir = dirname(fileURLToPath(import.meta.url));
 const rootEnvPath = resolve(seedDir, "../../../.env");
@@ -45,33 +46,84 @@ async function main() {
   }
 
   await prisma.$transaction(async (tx) => {
+    // 1. Setup RBAC Roles and Permissions
+    const rolesData = [
+      { name: "employee", perms: ["my_attendance", "manual_reports"] },
+      { name: "manager", perms: ["my_attendance", "manual_reports", "team_attendance", "approvals"] },
+      { name: "hr", perms: ["my_attendance", "manual_reports", "enrollment", "reports"] },
+      { name: "owner", perms: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance"] }
+    ];
+
+    for (const p of [...new Set(rolesData.flatMap(r => r.perms))]) {
+      await tx.permission.upsert({ create: { name: p }, update: {}, where: { name: p } });
+    }
+
+    const roles: Record<string, { id: string }> = {};
+    for (const r of rolesData) {
+      roles[r.name] = await tx.role.upsert({ create: { name: r.name }, update: {}, where: { name: r.name } });
+      for (const p of r.perms) {
+        const perm = await tx.permission.findUnique({ where: { name: p } });
+        if (perm) {
+          await tx.rolePermission.upsert({
+            create: { roleId: roles[r.name]!.id, permissionId: perm.id },
+            update: {},
+            where: { roleId_permissionId: { roleId: roles[r.name]!.id, permissionId: perm.id } }
+          });
+        }
+      }
+    }
+
+    // 2. Setup Employees with generic password123
+    const defaultPasswordHash = hashSync("password123", 10);
+
     const owner = await tx.employee.upsert({
       create: {
-        email: "owner@example.com",
-        fullName: "Owner",
-        isOwner: true,
-        passwordHash: "dev-only-password-disabled"
+        email: "owner@test.com",
+        fullName: "Company Owner",
+        roleId: roles["owner"]!.id,
+        passwordHash: defaultPasswordHash
       },
       update: {},
-      where: {
-        email: "owner@example.com"
-      }
+      where: { email: "owner@test.com" }
     });
 
     await tx.employee.upsert({
       create: {
-        email: "hr@example.com",
+        email: "hr@test.com",
         fullName: "HR Manager",
-        isHr: true,
+        roleId: roles["hr"]!.id,
         managerId: owner.id,
-        passwordHash: "dev-only-password-disabled"
+        passwordHash: defaultPasswordHash
       },
       update: {},
-      where: {
-        email: "hr@example.com"
-      }
+      where: { email: "hr@test.com" }
+    });
+    
+    const manager = await tx.employee.upsert({
+      create: {
+        email: "manager@test.com",
+        fullName: "Team Manager",
+        roleId: roles["manager"]!.id,
+        managerId: owner.id,
+        passwordHash: defaultPasswordHash
+      },
+      update: {},
+      where: { email: "manager@test.com" }
+    });
+    
+    await tx.employee.upsert({
+      create: {
+        email: "employee@test.com",
+        fullName: "Regular Employee",
+        roleId: roles["employee"]!.id,
+        managerId: manager.id,
+        passwordHash: defaultPasswordHash
+      },
+      update: {},
+      where: { email: "employee@test.com" }
     });
 
+    // 3. Setup Dev Device
     await tx.device.upsert({
       create: {
         apiKeyHash: hashDeviceSecret(devDeviceSecret),

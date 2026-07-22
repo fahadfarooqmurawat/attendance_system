@@ -1,12 +1,13 @@
 import { cookies } from "next/headers";
 
-import { verifySessionToken } from "./session-token.js";
+import { verifySessionToken } from "./session-token";
 
 export type SessionUser = {
   employeeId: string;
   email: string;
-  isHr: boolean;
-  isOwner: boolean;
+  fullName: string;
+  roleName: string;
+  permissions: string[];
 };
 
 const sessionCookieName = "attendance_session";
