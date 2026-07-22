@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 
 const mocks = vi.hoisted(() => {
   return {
@@ -30,6 +30,10 @@ describe("login actions", () => {
     vi.clearAllMocks();
   });
 
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
   describe("login", () => {
     it("returns error if email or password missing", async () => {
       const formData = new FormData();
@@ -55,11 +59,28 @@ describe("login actions", () => {
       formData.append("email", "found@test.com");
       formData.append("password", "wrongpass");
       
-      mocks.db.employee.findUnique.mockResolvedValue({ passwordHash: "hash" });
+      mocks.db.employee.findUnique.mockResolvedValue({ passwordHash: "hash", status: "ACTIVE" });
       mocks.compareSync.mockReturnValue(false);
       
       const result = await login(null, formData);
       expect(result).toEqual({ error: "Invalid email or password." });
+    });
+
+    it("returns error if employee is inactive", async () => {
+      const formData = new FormData();
+      formData.append("email", "inactive@test.com");
+      formData.append("password", "correctpass");
+
+      mocks.db.employee.findUnique.mockResolvedValue({
+        passwordHash: "hash",
+        status: "INACTIVE"
+      });
+
+      const result = await login(null, formData);
+
+      expect(result).toEqual({ error: "Invalid email or password." });
+      expect(mocks.compareSync).not.toHaveBeenCalled();
+      expect(mocks.signSessionToken).not.toHaveBeenCalled();
     });
 
     it("creates session and redirects on success", async () => {
@@ -72,6 +93,7 @@ describe("login actions", () => {
         email: "owner@test.com",
         fullName: "Test Owner",
         passwordHash: "hash",
+        status: "ACTIVE",
         role: {
           name: "owner",
           permissions: [{ permission: { name: "enrollment" } }]
@@ -88,6 +110,34 @@ describe("login actions", () => {
       expect(mocks.signSessionToken).toHaveBeenCalled();
       expect(mockSet).toHaveBeenCalledWith("attendance_session", "mock-jwt-token", expect.any(Object));
       expect(mocks.redirect).toHaveBeenCalledWith("/");
+    });
+
+    it("rejects an unsafe session secret in production", async () => {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("SESSION_SECRET", "");
+
+      const formData = new FormData();
+      formData.append("email", "owner@test.com");
+      formData.append("password", "correctpass");
+
+      mocks.db.employee.findUnique.mockResolvedValue({
+        id: "emp-1",
+        email: "owner@test.com",
+        fullName: "Test Owner",
+        passwordHash: "hash",
+        status: "ACTIVE",
+        role: {
+          name: "owner",
+          permissions: []
+        }
+      });
+      mocks.compareSync.mockReturnValue(true);
+
+      await expect(login(null, formData)).rejects.toThrow(
+        "SESSION_SECRET must be set to a strong value in production."
+      );
+      expect(mocks.signSessionToken).not.toHaveBeenCalled();
+      expect(mocks.cookies).not.toHaveBeenCalled();
     });
   });
 
