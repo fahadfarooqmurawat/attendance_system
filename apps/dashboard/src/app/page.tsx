@@ -3,6 +3,9 @@ import { hasPermission, type Permission } from "../lib/rbac";
 import { redirect } from "next/navigation";
 import { logout } from "./login/actions";
 
+// Authentication depends on request cookies and must only run at request time.
+export const dynamic = "force-dynamic";
+
 const allModules: { name: string; permission: Permission; description: string }[] = [
   { name: "My attendance", permission: "my_attendance", description: "View and manage your own daily attendance logs." },
   { name: "Team attendance", permission: "team_attendance", description: "Monitor the attendance status of your entire team." },
