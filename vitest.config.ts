@@ -3,7 +3,7 @@ import { defineConfig } from "vitest/config";
 export default defineConfig({
   test: {
     coverage: {
-      exclude: ["**/*.d.ts", "packages/db/src/generated/**", "apps/dashboard/src/app/**"],
+      exclude: ["**/*.d.ts", "packages/db/src/generated/**"],
       include: [
         "apps/dashboard/src/**/*.{ts,tsx}",
         "apps/device-gateway/src/**/*.ts",
