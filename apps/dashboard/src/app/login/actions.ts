@@ -52,7 +52,7 @@ export async function login(prevState: unknown, formData: FormData) {
     exp: Math.floor(Date.now() / 1000) + 60 * 60 // 1 hour expiry as requested
   };
 
-  // Sign token (Wait, getSessionSecret isn't exported from session.ts. Let me fix that or inline it)
+  // Sign token
   let sessionSecret = process.env.SESSION_SECRET;
   if (!sessionSecret || sessionSecret === "change-me-in-production") {
     sessionSecret = "dev-only-session-secret";
