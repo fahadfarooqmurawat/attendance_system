@@ -71,10 +71,11 @@ describe("session tokens", () => {
     const token = signSessionToken(
       {
         email: "owner@example.com",
+        fullName: "Test Owner",
         employeeId: "employee-1",
         exp: 1_783_334_400,
-        isHr: false,
-        isOwner: true
+        roleName: "owner",
+        permissions: ["enrollment", "reports"]
       },
       "test-session-secret"
     );
@@ -94,10 +95,11 @@ describe("session tokens", () => {
   it("rejects a correctly signed payload with missing or invalid claims", () => {
     const invalidClaims = {
       email: "owner@example.com",
+      fullName: "Test Owner",
       employeeId: "employee-1",
       exp: "tomorrow",
-      isHr: false,
-      isOwner: true
+      roleName: "owner",
+      permissions: ["enrollment", "reports"]
     };
     const token = signSessionToken(
       invalidClaims as unknown as Parameters<typeof signSessionToken>[0],
@@ -111,10 +113,11 @@ describe("session tokens", () => {
     const token = signSessionToken(
       {
         email: "owner@example.com",
+        fullName: "Test Owner",
         employeeId: "employee-1",
         exp: 4_102_444_800,
-        isHr: true,
-        isOwner: false
+        roleName: "owner",
+        permissions: ["enrollment", "reports"]
       },
       "correct-secret"
     );

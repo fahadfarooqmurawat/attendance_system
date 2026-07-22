@@ -11,9 +11,10 @@ import { signSessionToken } from "./session-token.js";
 
 const user = {
   email: "hr@example.com",
+  fullName: "Test HR",
   employeeId: "employee-7",
-  isHr: true,
-  isOwner: false
+  roleName: "hr",
+  permissions: ["reports"]
 };
 
 describe("getCurrentUser", () => {
