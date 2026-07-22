@@ -23,7 +23,7 @@ export async function getCurrentUser(): Promise<SessionUser | null> {
   return verifySessionToken(sessionCookie.value, sessionSecret);
 }
 
-function getSessionSecret() {
+export function getSessionSecret() {
   const sessionSecret = process.env.SESSION_SECRET;
 
   if (!sessionSecret || sessionSecret === "change-me-in-production") {

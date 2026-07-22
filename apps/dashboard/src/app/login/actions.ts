@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { compareSync } from "bcryptjs";
 import { createPrismaClient } from "@attendance/db";
 import { signSessionToken } from "../../lib/session-token";
+import { getSessionSecret } from "../../lib/session";
 
 const db = createPrismaClient(process.env.DATABASE_URL as string);
 
@@ -29,19 +30,21 @@ export async function login(prevState: unknown, formData: FormData) {
     }
   });
 
-  if (!employee) {
+  if (!employee || employee.status !== "ACTIVE") {
     return { error: "Invalid email or password." };
   }
 
   const passwordMatch = compareSync(password, employee.passwordHash);
-  
+
   if (!passwordMatch) {
     return { error: "Invalid email or password." };
   }
 
   // Create JWT payload
   const roleName = employee.role?.name || "employee";
-  const permissions = employee.role?.permissions.map((rp: { permission: { name: string } }) => rp.permission.name) || [];
+  const permissions =
+    employee.role?.permissions.map((rp: { permission: { name: string } }) => rp.permission.name) ||
+    [];
 
   const tokenPayload = {
     employeeId: employee.id,
@@ -52,13 +55,7 @@ export async function login(prevState: unknown, formData: FormData) {
     exp: Math.floor(Date.now() / 1000) + 60 * 60 // 1 hour expiry as requested
   };
 
-  // Sign token
-  let sessionSecret = process.env.SESSION_SECRET;
-  if (!sessionSecret || sessionSecret === "change-me-in-production") {
-    sessionSecret = "dev-only-session-secret";
-  }
-
-  const token = signSessionToken(tokenPayload, sessionSecret);
+  const token = signSessionToken(tokenPayload, getSessionSecret());
 
   // Set HTTP-only cookie
   (await cookies()).set("attendance_session", token, {
