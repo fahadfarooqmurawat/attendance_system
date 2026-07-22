@@ -72,7 +72,8 @@ deviceRouter.post("/heartbeat", async (req, res) => {
             select: {
               expiresAt: true,
               id: true,
-              status: true
+              status: true,
+              scannerTemplateId: true
             },
             where: {
               deviceId: device.id,
@@ -97,7 +98,8 @@ deviceRouter.post("/heartbeat", async (req, res) => {
               select: {
                 expiresAt: true,
                 id: true,
-                status: true
+                status: true,
+                scannerTemplateId: true
               },
               where: {
                 deviceId: device.id,
@@ -131,7 +133,8 @@ deviceRouter.post("/heartbeat", async (req, res) => {
         enrollment: enrollmentSession
           ? {
               expiresAt: enrollmentSession.expiresAt.toISOString(),
-              sessionId: enrollmentSession.id
+              sessionId: enrollmentSession.id,
+              templateId: enrollmentSession.scannerTemplateId
             }
           : null,
         lastSeenAt: now.toISOString()

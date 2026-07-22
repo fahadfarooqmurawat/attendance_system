@@ -43,20 +43,52 @@ void loop()
         sendHeartbeat(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, getMode());
     }
 
-    const ScanResult result = scanFingerprint();
+    ScannerMode mode = getMode();
 
-    if (result.success)
+    if (mode == ScannerMode::SCAN)
     {
-        Serial.printf("MATCH: template ID %u, confidence %u\n",
-                      static_cast<unsigned>(result.scannerTemplateId),
-                      static_cast<unsigned>(result.matchConfidence));
-        sendScan(GATEWAY_BASE_URL, DEVICE_ID, FIRMWARE_VERSION, result);
-    }
-    else if (!result.errorMessage.isEmpty())
-    {
-        Serial.print("SCAN: ");
-        Serial.println(result.errorMessage);
-    }
+        const ScanResult scanResult = scanFingerprint();
 
+        if (scanResult.success)
+        {
+            Serial.printf("MATCH: template ID %u, confidence %u\n",
+                          static_cast<unsigned>(scanResult.scannerTemplateId),
+                          static_cast<unsigned>(scanResult.matchConfidence));
+
+            sendScan(
+                GATEWAY_BASE_URL,
+                DEVICE_ID,
+                FIRMWARE_VERSION,
+                scanResult);
+        }
+        else if (!scanResult.errorMessage.isEmpty())
+        {
+            Serial.print("SCAN: ");
+            Serial.println(scanResult.errorMessage);
+        }
+    }
+    else if (mode == ScannerMode::ENROLL)
+    {
+        EnrollmentResult result =
+            enrollFingerprint(
+                getEnrollmentTemplateId());
+
+        sendEnrollmentResult(
+            GATEWAY_BASE_URL,
+            DEVICE_ID,
+            FIRMWARE_VERSION,
+            result);
+
+        if (result.success)
+        {
+            Serial.println("Enrollment finished successfully.");
+        }
+        else
+        {
+            Serial.println("Enrollment failed.");
+        }
+
+        cancelEnrollment();
+    }
     delay(250);
 }
