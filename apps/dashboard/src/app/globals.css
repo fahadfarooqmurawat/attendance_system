@@ -256,25 +256,80 @@ a {
 }
 
 .scan-chip {
-  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
-  border: 1px solid rgba(96, 165, 250, 0.3);
-  color: #93c5fd;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.85rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  transition: all 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
   width: 100%;
-  max-width: 110px;
+  max-width: 130px;
+  cursor: default;
 }
 
-.scan-chip:hover {
-  transform: scale(1.05);
+.scan-chip.check-in,
+.scan-chip.check-out {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(139, 92, 246, 0.2));
+  border: 1px solid rgba(96, 165, 250, 0.3);
+  color: #93c5fd;
+}
+
+.scan-chip.check-in:hover,
+.scan-chip.check-out:hover {
   background: linear-gradient(135deg, rgba(59, 130, 246, 0.35), rgba(139, 92, 246, 0.35));
   border-color: rgba(147, 197, 253, 0.6);
   color: #ffffff;
+}
+
+.scan-chip.needs-review {
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(185, 28, 28, 0.35));
+  border: 1.5px solid rgba(248, 113, 113, 0.85);
+  color: #fca5a5;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.35);
+  cursor: pointer;
+  animation: pulseReview 2s infinite ease-in-out;
+}
+
+@keyframes pulseReview {
+  0% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.6);
+  }
+  100% {
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.3);
+  }
+}
+
+.scan-chip.needs-review:hover {
+  transform: translateY(-2px) scale(1.05);
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.45), rgba(220, 38, 38, 0.5));
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+.scan-icon {
+  font-size: 0.9rem;
+  display: inline-block;
+  line-height: 1;
+}
+
+.review-badge {
+  font-size: 0.7rem;
+  background: rgba(239, 68, 68, 0.3);
+  border: 1px solid rgba(239, 68, 68, 0.6);
+  color: #fca5a5;
+  padding: 1px 5px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  font-weight: 700;
+  margin-left: 2px;
 }
 
 .no-scans {
