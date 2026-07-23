@@ -3,19 +3,14 @@ import { hasPermission } from "../../lib/rbac";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createPrismaClient } from "@attendance/db";
+import { classifyDailyScans } from "@attendance/attendance-core";
 import { logout } from "../login/actions";
 import { ManualRequestsContainer } from "../manual-requests/manual-requests-container";
+import { WeeklyAttendanceView, type WeekdayData } from "./weekly-attendance-view";
 
 export const dynamic = "force-dynamic";
 
 const db = createPrismaClient(process.env.DATABASE_URL as string);
-
-interface WeekdayColumn {
-  dayName: string;
-  dateStr: string;
-  fullDate: Date;
-  scans: { id: string; timeStr: string; serverReceivedAt: Date }[];
-}
 
 function getLastWeekRange(referenceDate = new Date()) {
   const date = new Date(referenceDate);
@@ -90,7 +85,7 @@ export default async function MyAttendancePage() {
   });
 
   // Construct 7 weekday columns (Monday through Sunday)
-  const weekdays: WeekdayColumn[] = [
+  const weekdays: WeekdayData[] = [
     { dayName: "Monday", dateStr: "", fullDate: new Date(), scans: [] },
     { dayName: "Tuesday", dateStr: "", fullDate: new Date(), scans: [] },
     { dayName: "Wednesday", dateStr: "", fullDate: new Date(), scans: [] },
@@ -108,7 +103,7 @@ export default async function MyAttendancePage() {
     weekdays[i]!.dateStr = formatDateHeader(dayDate);
 
     // Filter scans matching this day
-    const dayScans = scanEvents.filter((scan) => {
+    const rawDayScans = scanEvents.filter((scan) => {
       const scanDate = new Date(scan.serverReceivedAt);
       return (
         scanDate.getFullYear() === dayDate.getFullYear() &&
@@ -117,11 +112,13 @@ export default async function MyAttendancePage() {
       );
     });
 
-    weekdays[i]!.scans = dayScans.map((scan) => ({
+    const formattedScans = rawDayScans.map((scan) => ({
       id: scan.id,
       timeStr: formatTime(new Date(scan.serverReceivedAt)),
-      serverReceivedAt: scan.serverReceivedAt
+      occurredAt: scan.serverReceivedAt
     }));
+
+    weekdays[i]!.scans = classifyDailyScans(formattedScans, weekdays[i]!.dayName);
   }
 
   const totalScans = scanEvents.length;
@@ -182,39 +179,8 @@ export default async function MyAttendancePage() {
       </section>
 
       {/* Weekly Grid Table */}
-      <section className="attendance-table-container">
-        <table className="attendance-table">
-          <thead>
-            <tr>
-              {weekdays.map((day) => (
-                <th key={day.dayName}>
-                  <span className="weekday-name">{day.dayName}</span>
-                  <span className="weekday-date">{day.dateStr}</span>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              {weekdays.map((day) => (
-                <td key={day.dayName}>
-                  {day.scans.length > 0 ? (
-                    <div className="scans-container">
-                      {day.scans.map((scan) => (
-                        <div key={scan.id} className="scan-chip" title={`Recorded at ${scan.timeStr}`}>
-                          {scan.timeStr}
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <span className="no-scans">No scans</span>
-                  )}
-                </td>
-              ))}
-            </tr>
-          </tbody>
-        </table>
-      </section>
+      <WeeklyAttendanceView weekdays={weekdays} />
     </main>
   );
 }
+
