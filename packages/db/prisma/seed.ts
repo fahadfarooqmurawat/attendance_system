@@ -50,8 +50,8 @@ async function main() {
     const rolesData = [
       { name: "employee", perms: ["my_attendance", "manual_reports"] },
       { name: "manager", perms: ["my_attendance", "manual_reports", "team_attendance", "approvals"] },
-      { name: "hr", perms: ["my_attendance", "manual_reports", "enrollment", "reports"] },
-      { name: "owner", perms: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance"] }
+      { name: "hr", perms: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance", "approvals"] },
+      { name: "owner", perms: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance", "approvals"] }
     ];
 
     for (const p of [...new Set(rolesData.flatMap(r => r.perms))]) {
@@ -217,6 +217,30 @@ async function main() {
         }
       }
     }
+
+    // 5. Seed Default Company Settings & Sample Holiday
+    await tx.companySetting.upsert({
+      create: {
+        key: "weekly_off_days",
+        value: [0] // Sunday default off-day
+      },
+      update: {},
+      where: { key: "weekly_off_days" }
+    });
+
+    const holidayDate = new Date();
+    holidayDate.setDate(holidayDate.getDate() + 2); // 2 days from now
+    holidayDate.setHours(0, 0, 0, 0);
+
+    await tx.holiday.upsert({
+      create: {
+        name: "Official Company Holiday",
+        date: holidayDate,
+        description: "Company-wide annual off-day"
+      },
+      update: {},
+      where: { date: holidayDate }
+    });
   });
 }
 

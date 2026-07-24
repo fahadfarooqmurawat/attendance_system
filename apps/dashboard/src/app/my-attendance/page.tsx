@@ -70,7 +70,23 @@ export default async function MyAttendancePage() {
 
   const { lastWeekMonday, lastWeekSunday } = getLastWeekRange();
 
-  // Fetch scans for the authenticated employee during last week
+  // 1. Fetch weekly off-days setting
+  const offDaysSetting = await db.companySetting.findUnique({
+    where: { key: "weekly_off_days" }
+  });
+  const offDaysArray: number[] = Array.isArray(offDaysSetting?.value) ? (offDaysSetting.value as number[]) : [0];
+
+  // 2. Fetch holidays during the week
+  const holidays = await db.holiday.findMany({
+    where: {
+      date: {
+        gte: lastWeekMonday,
+        lte: lastWeekSunday
+      }
+    }
+  });
+
+  // 3. Fetch scans for the authenticated employee during last week
   const scanEvents = await db.scanEvent.findMany({
     where: {
       employeeId: user.employeeId,
@@ -98,6 +114,7 @@ export default async function MyAttendancePage() {
   for (let i = 0; i < 7; i++) {
     const dayDate = new Date(lastWeekMonday);
     dayDate.setDate(lastWeekMonday.getDate() + i);
+    dayDate.setHours(0, 0, 0, 0);
 
     weekdays[i]!.fullDate = dayDate;
     weekdays[i]!.dateStr = formatDateHeader(dayDate);
@@ -119,6 +136,30 @@ export default async function MyAttendancePage() {
     }));
 
     weekdays[i]!.scans = classifyDailyScans(formattedScans, weekdays[i]!.dayName);
+
+    // Determine status for days without scans
+    if (weekdays[i]!.scans.length > 0) {
+      weekdays[i]!.status = "PRESENT";
+    } else {
+      // Check Holiday exemption
+      const foundHoliday = holidays.find(h => {
+        const hDate = new Date(h.date);
+        return (
+          hDate.getFullYear() === dayDate.getFullYear() &&
+          hDate.getMonth() === dayDate.getMonth() &&
+          hDate.getDate() === dayDate.getDate()
+        );
+      });
+
+      if (foundHoliday) {
+        weekdays[i]!.status = "HOLIDAY";
+        weekdays[i]!.holidayName = foundHoliday.name;
+      } else if (offDaysArray.includes(dayDate.getDay())) {
+        weekdays[i]!.status = "WEEKEND";
+      } else {
+        weekdays[i]!.status = "ABSENT";
+      }
+    }
   }
 
   const totalScans = scanEvents.length;
@@ -183,4 +224,3 @@ export default async function MyAttendancePage() {
     </main>
   );
 }
-

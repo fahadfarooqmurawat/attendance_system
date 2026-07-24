@@ -3,10 +3,9 @@ import { hasPermission } from "../../lib/rbac";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createPrismaClient } from "@attendance/db";
-import type { Prisma } from "@attendance/db";
 import { logout } from "../login/actions";
 import { ManualRequestsContainer } from "./manual-requests-container";
-import { RequestActionsClient } from "./request-actions-client";
+import { deleteManualRequest } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -42,38 +41,14 @@ export default async function ManualRequestsPage() {
     );
   }
 
-  const isOwner = user.roleName === "owner";
-  const isHR = user.roleName === "hr";
-  const isManager = user.roleName === "manager";
-  const isReviewer = isOwner || isHR || isManager;
-
-  // Role-based visibility filter for requests:
-  // - Manager: sees employee requests + own requests (excludes HR & Owner requests)
-  // - HR: sees employee requests, manager requests + own requests
-  // - Owner: sees all requests (including HR requests awaiting Owner approval)
-  // - Employee: sees only own requests
-  let whereClause: Prisma.ManualAttendanceRequestWhereInput = { employeeId: user.employeeId };
-
-  if (isOwner) {
-    whereClause = {};
-  } else if (isHR) {
-    whereClause = {
-      OR: [
-        { employeeId: user.employeeId },
-        { employee: { role: { name: { in: ["employee", "manager"] } } } }
-      ]
-    };
-  } else if (isManager) {
-    whereClause = {
-      OR: [
-        { employeeId: user.employeeId },
-        { employee: { role: { name: "employee" } } }
-      ]
-    };
-  }
-
+  // Strictly filter requests to ONLY show requests submitted by the authenticated user
   const requests = await db.manualAttendanceRequest.findMany({
-    where: whereClause,
+    where: {
+      OR: [
+        { employeeId: user.employeeId },
+        { createdByEmployeeId: user.employeeId }
+      ]
+    },
     include: {
       employee: {
         include: { role: true }
@@ -83,20 +58,11 @@ export default async function ManualRequestsPage() {
     orderBy: { createdAt: "desc" }
   });
 
-  let subtitleText = "Track the status of your submitted missing punch requests.";
-  if (isOwner) {
-    subtitleText = "Review HR requests and monitor all attendance requests across the organization.";
-  } else if (isHR) {
-    subtitleText = "Review and complete final approval (Stage 2) for missing punch requests.";
-  } else if (isManager) {
-    subtitleText = "Review and complete initial 1st stage approval for missing punch requests.";
-  }
-
   return (
     <main className="app-shell">
       <header className="topbar">
         <div>
-          <h1>Manual Attendance Requests</h1>
+          <h1>My Manual Requests</h1>
           <p className="muted">
             Logged in as <strong>{user.fullName}</strong> ({user.roleName})
           </p>
@@ -113,67 +79,72 @@ export default async function ManualRequestsPage() {
         </div>
       </header>
 
-      {/* Manual Request Pop-up Trigger & Form Container */}
+      {/* Manual Request Form & Trigger */}
       <section>
         <ManualRequestsContainer />
       </section>
 
-      {/* Requests Directory Table */}
+      {/* User Submitted Requests Table */}
       <section className="form-panel" style={{ gap: "16px" }}>
         <div>
-          <h2>Submitted Attendance Requests ({requests.length})</h2>
-          <p className="muted">{subtitleText}</p>
+          <h2>My Submitted Requests ({requests.length})</h2>
+          <p className="muted">Track the status of manual punch adjustment requests you have submitted.</p>
         </div>
 
         <div className="attendance-table-container">
           <table className="directory-table">
             <thead>
               <tr>
-                <th>Employee</th>
                 <th>Requested Punch Time</th>
                 <th>Reason</th>
                 <th>Submitted On</th>
                 <th>Status</th>
-                {isReviewer && <th>Actions</th>}
+                <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {requests.length > 0 ? (
                 requests.map((req) => {
-                  const targetRoleName = req.employee.role?.name;
-                  const isHRRequest = targetRoleName === "hr";
-                  const isSelf = user.employeeId === req.employeeId || user.employeeId === req.createdByEmployeeId;
-
-                  let canApproveThisRow = false;
-                  let statusDisplay = req.status.replace("_", " ");
-                  let awaitingText = "";
+                  let statusBadgeStyle = {
+                    background: "rgba(148, 163, 184, 0.15)",
+                    color: "#94a3b8",
+                    border: "1px solid rgba(148, 163, 184, 0.3)"
+                  };
+                  let statusText = req.status.replace("_", " ");
 
                   if (req.status === "PENDING_MANAGER") {
-                    statusDisplay = "PENDING 1ST APPROVAL (MANAGER)";
-                    awaitingText = "Awaiting Manager Approval";
-                    if (!isSelf && (isManager || isHR || isOwner)) {
-                      canApproveThisRow = true;
-                    }
+                    statusText = "Stage 1: Awaiting Manager";
+                    statusBadgeStyle = {
+                      background: "rgba(251, 191, 36, 0.15)",
+                      color: "#fbbf24",
+                      border: "1px solid rgba(251, 191, 36, 0.3)"
+                    };
                   } else if (req.status === "PENDING_HR") {
-                    if (isHRRequest) {
-                      statusDisplay = "PENDING OWNER APPROVAL";
-                      awaitingText = "Requires Owner Approval";
-                      if (isOwner) {
-                        canApproveThisRow = true;
-                      }
-                    } else {
-                      statusDisplay = "PENDING 2ND APPROVAL (HR)";
-                      awaitingText = "Awaiting HR Approval";
-                      if (!isSelf && (isHR || isOwner)) {
-                        canApproveThisRow = true;
-                      }
-                    }
+                    statusText = "Stage 2: Awaiting HR";
+                    statusBadgeStyle = {
+                      background: "rgba(192, 132, 252, 0.15)",
+                      color: "#c084fc",
+                      border: "1px solid rgba(192, 132, 252, 0.3)"
+                    };
+                  } else if (req.status === "APPROVED") {
+                    statusText = "Approved";
+                    statusBadgeStyle = {
+                      background: "rgba(74, 222, 128, 0.15)",
+                      color: "#4ade80",
+                      border: "1px solid rgba(74, 222, 128, 0.3)"
+                    };
+                  } else if (req.status === "REJECTED") {
+                    statusText = "Rejected";
+                    statusBadgeStyle = {
+                      background: "rgba(248, 113, 113, 0.15)",
+                      color: "#f87171",
+                      border: "1px solid rgba(248, 113, 113, 0.3)"
+                    };
                   }
 
                   return (
                     <tr key={req.id}>
-                      <td style={{ fontWeight: 600 }}>{req.employee.fullName}</td>
-                      <td style={{ color: "#93c5fd", fontWeight: 500 }}>
+                      <td style={{ color: "#93c5fd", fontWeight: 600 }}>
                         {formatTimestamp(req.requestedTimestamp)}
                       </td>
                       <td>{req.reason}</td>
@@ -181,30 +152,45 @@ export default async function ManualRequestsPage() {
                         {formatTimestamp(req.createdAt)}
                       </td>
                       <td>
-                        <span className={`status-badge ${req.status.toLowerCase()}`}>
-                          {statusDisplay}
+                        <span
+                          style={{
+                            ...statusBadgeStyle,
+                            padding: "4px 12px",
+                            borderRadius: "12px",
+                            fontSize: "0.8rem",
+                            fontWeight: 600,
+                            display: "inline-block"
+                          }}
+                        >
+                          {statusText}
                         </span>
                       </td>
-                      {isReviewer && (
-                        <td>
-                          {canApproveThisRow ? (
-                            <RequestActionsClient requestId={req.id} status={req.status} />
-                          ) : req.status === "APPROVED" || req.status === "REJECTED" ? (
-                            <span className="muted" style={{ fontSize: "0.85rem" }}>—</span>
-                          ) : (
-                            <span className="muted" style={{ fontSize: "0.85rem", fontStyle: "italic" }}>
-                              {awaitingText}
-                            </span>
-                          )}
-                        </td>
-                      )}
+                      <td style={{ textAlign: "right" }}>
+                        <form action={deleteManualRequest} style={{ display: "inline" }}>
+                          <input type="hidden" name="id" value={req.id} />
+                          <button
+                            type="submit"
+                            style={{
+                              background: "rgba(248, 113, 113, 0.15)",
+                              color: "#f87171",
+                              border: "1px solid rgba(248, 113, 113, 0.3)",
+                              padding: "4px 10px",
+                              borderRadius: "6px",
+                              fontSize: "0.8rem",
+                              cursor: "pointer"
+                            }}
+                          >
+                            Delete
+                          </button>
+                        </form>
+                      </td>
                     </tr>
                   );
                 })
               ) : (
                 <tr>
-                  <td colSpan={isReviewer ? 6 : 5} style={{ textAlign: "center", padding: "24px", color: "var(--muted)" }}>
-                    No manual attendance requests found.
+                  <td colSpan={5} style={{ textAlign: "center", padding: "24px", color: "var(--muted)" }}>
+                    You have not submitted any manual requests yet.
                   </td>
                 </tr>
               )}

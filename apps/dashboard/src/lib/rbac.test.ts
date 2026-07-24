@@ -23,6 +23,18 @@ describe("rbac", () => {
     it("returns false if user does not have the permission", () => {
       expect(hasPermission(mockUser, "reports")).toBe(false);
     });
+
+    it("verifies owner and hr have company_attendance permission whereas manager and employee do not", () => {
+      const ownerUser: SessionUser = { ...mockUser, roleName: "owner", permissions: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance"] };
+      const hrUser: SessionUser = { ...mockUser, roleName: "hr", permissions: ["my_attendance", "manual_reports", "enrollment", "reports", "company_attendance"] };
+      const managerUser: SessionUser = { ...mockUser, roleName: "manager", permissions: ["my_attendance", "manual_reports", "team_attendance", "approvals"] };
+      const employeeUser: SessionUser = { ...mockUser, roleName: "employee", permissions: ["my_attendance", "manual_reports"] };
+
+      expect(hasPermission(ownerUser, "company_attendance")).toBe(true);
+      expect(hasPermission(hrUser, "company_attendance")).toBe(true);
+      expect(hasPermission(managerUser, "company_attendance")).toBe(false);
+      expect(hasPermission(employeeUser, "company_attendance")).toBe(false);
+    });
   });
 
   describe("hasAnyPermission", () => {
