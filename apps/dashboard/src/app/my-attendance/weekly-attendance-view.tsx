@@ -15,6 +15,8 @@ export interface WeekdayData {
   dateStr: string;
   fullDate: Date;
   scans: DisplayScan[];
+  status?: "PRESENT" | "LATE" | "ABSENT" | "HOLIDAY" | "WEEKEND";
+  holidayName?: string;
 }
 
 interface WeeklyAttendanceViewProps {
@@ -30,6 +32,7 @@ interface ReviewModalInfo {
 export function WeeklyAttendanceView({ weekdays }: WeeklyAttendanceViewProps) {
   const [activeReviewScan, setActiveReviewScan] = useState<ReviewModalInfo | null>(null);
   const [isManualRequestOpen, setIsManualRequestOpen] = useState(false);
+  const [modalKey, setModalKey] = useState(0);
 
   const handleChipClick = (scan: DisplayScan, dayName: string, dateStr: string) => {
     if (scan.type === "needs-review") {
@@ -39,6 +42,7 @@ export function WeeklyAttendanceView({ weekdays }: WeeklyAttendanceViewProps) {
 
   const openManualRequest = () => {
     setActiveReviewScan(null);
+    setModalKey((prev) => prev + 1);
     setIsManualRequestOpen(true);
   };
 
@@ -93,7 +97,51 @@ export function WeeklyAttendanceView({ weekdays }: WeeklyAttendanceViewProps) {
                       })}
                     </div>
                   ) : (
-                    <span className="no-scans">No scans</span>
+                    <div style={{ padding: "8px 0" }}>
+                      {day.status === "HOLIDAY" && (
+                        <span style={{
+                          background: "rgba(192, 132, 252, 0.15)",
+                          color: "#c084fc",
+                          border: "1px solid rgba(192, 132, 252, 0.3)",
+                          padding: "6px 12px",
+                          borderRadius: "12px",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          display: "inline-block"
+                        }}>
+                          🎉 {day.holidayName || "Official Holiday"}
+                        </span>
+                      )}
+                      {day.status === "WEEKEND" && (
+                        <span style={{
+                          background: "rgba(148, 163, 184, 0.15)",
+                          color: "#94a3b8",
+                          border: "1px solid rgba(148, 163, 184, 0.3)",
+                          padding: "6px 12px",
+                          borderRadius: "12px",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          display: "inline-block"
+                        }}>
+                          🌴 Weekend Off
+                        </span>
+                      )}
+                      {day.status === "ABSENT" && (
+                        <span style={{
+                          background: "rgba(248, 113, 113, 0.15)",
+                          color: "#f87171",
+                          border: "1px solid rgba(248, 113, 113, 0.3)",
+                          padding: "6px 12px",
+                          borderRadius: "12px",
+                          fontSize: "0.8rem",
+                          fontWeight: 600,
+                          display: "inline-block"
+                        }}>
+                          ❌ Absent
+                        </span>
+                      )}
+                      {!day.status && <span className="no-scans">No scans</span>}
+                    </div>
                   )}
                 </td>
               ))}
@@ -168,6 +216,7 @@ export function WeeklyAttendanceView({ weekdays }: WeeklyAttendanceViewProps) {
 
       {/* Manual Request Modal Integration */}
       <ManualRequestModal
+        key={modalKey}
         isOpen={isManualRequestOpen}
         onClose={() => setIsManualRequestOpen(false)}
       />

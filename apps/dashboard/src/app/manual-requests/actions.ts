@@ -1,6 +1,7 @@
 "use server";
 
 import { getCurrentUser } from "../../lib/session";
+import { hasPermission } from "../../lib/rbac";
 import { createPrismaClient } from "@attendance/db";
 import { revalidatePath } from "next/cache";
 
@@ -112,15 +113,26 @@ export async function approveRequest(requestId: string): Promise<RequestState> {
     }
   }
 
-  // RULE 2: No self-approval (except Owner)
-  if (isSelf && user.roleName !== "owner") {
+  const userRole = user.roleName?.toLowerCase() || "";
+  const isOwnerOrAdmin = userRole === "owner" || userRole === "admin";
+
+  // RULE 2: No self-approval (except Owner / Admin)
+  if (isSelf && !isOwnerOrAdmin) {
     return { error: "Unauthorized: You cannot approve your own manual attendance request." };
   }
 
-  // Stage 1: Manager Approval for regular employees (PENDING_MANAGER -> PENDING_HR)
+  // Stage 1: Manager / Supervisor / Approver Stage (PENDING_MANAGER -> PENDING_HR)
   if (request.status === "PENDING_MANAGER") {
-    if (user.roleName !== "manager" && user.roleName !== "hr" && user.roleName !== "owner") {
-      return { error: "Unauthorized: 1st stage approval must be completed by a Manager." };
+    if (userRole === "hr") {
+      return { error: "Stage 1 Approval must be completed by the direct Manager first before HR can approve." };
+    }
+
+    const canApproveStage1 =
+      hasPermission(user, "approvals") ||
+      ["manager", "supervisor", "team_lead", "owner", "admin"].includes(userRole);
+
+    if (!canApproveStage1) {
+      return { error: "Unauthorized: 1st stage approval must be completed by an authorized Manager or Approver." };
     }
 
     await db.manualAttendanceRequest.update({
@@ -128,6 +140,7 @@ export async function approveRequest(requestId: string): Promise<RequestState> {
       data: { status: "PENDING_HR" }
     });
 
+    revalidatePath("/approvals");
     revalidatePath("/manual-requests");
     revalidatePath("/my-attendance");
 
@@ -136,12 +149,17 @@ export async function approveRequest(requestId: string): Promise<RequestState> {
 
   // Stage 2: HR or Owner Approval (PENDING_HR -> APPROVED)
   if (request.status === "PENDING_HR") {
-    if (isHRRequest && user.roleName !== "owner") {
-      return { error: "Unauthorized: HR requests can only be approved by the Owner." };
+    if (isHRRequest && !isOwnerOrAdmin) {
+      return { error: "Unauthorized: HR requests can only be approved by the Company Owner." };
     }
 
-    if (user.roleName !== "hr" && user.roleName !== "owner") {
-      return { error: "Unauthorized: Final approval must be completed by HR or Owner." };
+    const canApproveStage2 =
+      userRole === "hr" ||
+      isOwnerOrAdmin ||
+      hasPermission(user, "company_attendance");
+
+    if (!canApproveStage2) {
+      return { error: "Unauthorized: Final stage approval must be completed by HR or Owner." };
     }
 
     await db.manualAttendanceRequest.update({
@@ -169,6 +187,7 @@ export async function approveRequest(requestId: string): Promise<RequestState> {
       }
     }
 
+    revalidatePath("/approvals");
     revalidatePath("/manual-requests");
     revalidatePath("/my-attendance");
 
@@ -218,8 +237,40 @@ export async function rejectRequest(requestId: string): Promise<RequestState> {
     data: { status: "REJECTED" }
   });
 
+  revalidatePath("/approvals");
   revalidatePath("/manual-requests");
   revalidatePath("/my-attendance");
 
   return { success: "Request rejected." };
+}
+
+export async function deleteManualRequest(formData: FormData) {
+  const user = await getCurrentUser();
+  if (!user) {
+    throw new Error("Unauthorized: Please log in.");
+  }
+
+  const id = formData.get("id") as string;
+  if (!id) return;
+
+  const request = await db.manualAttendanceRequest.findUnique({
+    where: { id }
+  });
+
+  if (!request) return;
+
+  const isOwnerOrHR = user.roleName === "owner" || user.roleName === "hr";
+  const isOwnerOrCreator = request.employeeId === user.employeeId || request.createdByEmployeeId === user.employeeId;
+
+  if (!isOwnerOrHR && !isOwnerOrCreator) {
+    throw new Error("Unauthorized: You can only delete your own submitted requests.");
+  }
+
+  await db.manualAttendanceRequest.delete({
+    where: { id }
+  });
+
+  revalidatePath("/manual-requests");
+  revalidatePath("/my-attendance");
+  revalidatePath("/approvals");
 }
