@@ -104,6 +104,7 @@ pnpm docker:down
 | `pnpm docker:up`            | Start PostgreSQL and all app services in Docker.              |
 | `pnpm docker:logs`          | Follow Docker logs.                                           |
 | `pnpm docker:down`          | Stop the local Docker stack.                                  |
+| `pnpm db:clear`             | Delete all development data while preserving the schema.      |
 | `pnpm db:migrate`           | Create/apply local Prisma migrations.                         |
 | `pnpm db:migrate:deploy`    | Apply committed migrations in production/shared environments. |
 | `pnpm db:seed`              | Seed development-only data.                                   |
@@ -119,6 +120,17 @@ pnpm docker:down
 | `pnpm firmware:upload`      | Build and upload firmware to a connected ESP32.               |
 | `pnpm firmware:monitor`     | Monitor serial output from a connected ESP32.                 |
 | `pnpm firmware:clean`       | Remove PlatformIO firmware build artifacts.                   |
+
+To rebuild the local development data after the seed changes, clear the existing
+application records and run the seed again:
+
+```bash
+pnpm db:clear
+pnpm db:seed
+```
+
+The cleanup is transactional, preserves migrations and schema objects, and refuses to run
+when `NODE_ENV=production`.
 
 Before opening a pull request, run:
 
