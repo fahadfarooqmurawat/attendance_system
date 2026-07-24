@@ -10,6 +10,7 @@
   "scripts": {
     "build": "turbo run build",
     "clean": "turbo run clean",
+    "db:clear": "pnpm --filter @attendance/db clear",
     "db:generate": "pnpm --filter @attendance/db generate",
     "db:migrate": "pnpm --filter @attendance/db migrate:dev",
     "db:migrate:deploy": "pnpm --filter @attendance/db migrate:deploy",
